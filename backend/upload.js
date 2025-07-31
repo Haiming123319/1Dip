@@ -1,6 +1,7 @@
 const fs = require('fs');
 const crypto = require('crypto');
 const { NFTStorage, File } = require('nft.storage');
+//const { Web3Storage } = require('web3.storage');
 const { registerWork } = require('./interact'); 
 require('dotenv').config();
 
