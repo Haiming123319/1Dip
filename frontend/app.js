@@ -1,5 +1,5 @@
-// DRManager 前端应用主文件
-// 与后端 API 完全对接
+// DRManager Main frontend application file
+// Fully integrated with backend API
 
 class DRManagerApp {
     constructor() {
@@ -9,26 +9,26 @@ class DRManagerApp {
         this.account = null;
         this.contractAddress = '0x1fE38AFc5B06e147dCb0e2eF46FC7ee27bfd278f';
         this.selectedFile = null;
-        this.apiBase = ''; // 后端API基础地址 (同域名)
+        this.apiBase = ''; // Base URL for backend API ()
     }
 
-    // 初始化应用
+    // Initialize application
     async init() {
-        console.log('🚀 初始化 DRManager...');
+        console.log('🚀 Initializing DRManager...');
         
         this.setupEventListeners();
         await this.checkWalletConnection();
         await this.loadUserStats();
         
-        console.log('✅ 应用初始化完成');
+        console.log('✅ Application initialized successfully');
     }
 
-    // 设置事件监听器
+    // Set up event listeners
     setupEventListeners() {
-        // 钱包连接
+        // Wallet connection
         document.getElementById('connectBtn').onclick = () => this.connectWallet();
         
-        // 文件上传
+        // File upload
         document.getElementById('uploadZone').onclick = () => {
             document.getElementById('fileInput').click();
         };
@@ -37,13 +37,13 @@ class DRManagerApp {
             this.handleFileSelect(e.target.files);
         };
         
-        // 版权注册
+        // Copyright registration
         document.getElementById('registerBtn').onclick = () => this.registerCopyright();
         
-        // 拖拽上传
+        // 
         this.setupDragAndDrop();
         
-        // 监听 MetaMask 事件
+        //  MetaMask 
         if (window.ethereum) {
             window.ethereum.on('accountsChanged', (accounts) => {
                 if (accounts.length === 0) {
@@ -59,7 +59,7 @@ class DRManagerApp {
         }
     }
 
-    // 设置拖拽上传
+    // Set up drag-and-drop upload
     setupDragAndDrop() {
         const zone = document.getElementById('uploadZone');
         
@@ -79,10 +79,10 @@ class DRManagerApp {
         };
     }
 
-    // 检查钱包连接
+    // Wallet connection
     async checkWalletConnection() {
         if (typeof window.ethereum === 'undefined') {
-            this.showNotification('请安装 MetaMask 钱包', 'error');
+            this.showNotification('Please install MetaMask wallet', 'error');
             return;
         }
 
@@ -95,11 +95,11 @@ class DRManagerApp {
                 await this.connectWallet();
             }
         } catch (error) {
-            console.error('检查钱包连接失败:', error);
+            console.error('Wallet connection failed:', error);
         }
     }
 
-    // 连接钱包
+    // 
     async connectWallet() {
         try {
             const accounts = await window.ethereum.request({
@@ -110,25 +110,25 @@ class DRManagerApp {
             this.provider = new ethers.providers.Web3Provider(window.ethereum);
             this.signer = this.provider.getSigner();
 
-            // 加载合约
+            // 
             await this.loadContract();
 
-            // 更新UI
+            // UI
             this.updateWalletUI(true);
             
-            // 加载用户数据
+            // 
             await this.loadUserContent();
             await this.loadUserStats();
 
-            this.showNotification('钱包连接成功！');
+            this.showNotification('Wallet connection！');
             
         } catch (error) {
-            console.error('钱包连接失败:', error);
-            this.showNotification('钱包连接失败', 'error');
+            console.error('Wallet connection failed:', error);
+            this.showNotification('Wallet connection failed', 'error');
         }
     }
 
-    // 处理断开连接
+    // 
     handleDisconnect() {
         this.account = null;
         this.provider = null;
@@ -136,10 +136,10 @@ class DRManagerApp {
         this.contract = null;
         
         this.updateWalletUI(false);
-        this.showNotification('钱包已断开连接');
+        this.showNotification('');
     }
 
-    // 加载智能合约
+    // 
     async loadContract() {
         try {
             const response = await fetch('./contract.json');
@@ -151,14 +151,14 @@ class DRManagerApp {
                 this.signer
             );
             
-            console.log('✅ 智能合约加载成功');
+            console.log('✅ ');
         } catch (error) {
-            console.error('❌ 智能合约加载失败:', error);
-            this.showNotification('合约加载失败', 'error');
+            console.error('❌ :', error);
+            this.showNotification('', 'error');
         }
     }
 
-    // 更新钱包UI状态
+    // Update wallet UI status
     updateWalletUI(connected) {
         const statusDot = document.getElementById('statusDot');
         const walletStatus = document.getElementById('walletStatus');
@@ -167,17 +167,17 @@ class DRManagerApp {
         if (connected && this.account) {
             statusDot.classList.add('connected');
             walletStatus.textContent = `${this.account.slice(0, 6)}...${this.account.slice(-4)}`;
-            connectBtn.innerHTML = '<i class="fas fa-check"></i> 已连接';
+            connectBtn.innerHTML = '<i class="fas fa-check"></i> ';
             connectBtn.disabled = true;
         } else {
             statusDot.classList.remove('connected');
-            walletStatus.textContent = '未连接钱包';
-            connectBtn.innerHTML = '<i class="fas fa-wallet"></i> 连接 MetaMask';
+            walletStatus.textContent = '';
+            connectBtn.innerHTML = '<i class="fas fa-wallet"></i>  MetaMask';
             connectBtn.disabled = false;
         }
     }
 
-    // 处理文件选择
+    // 
     handleFileSelect(files) {
         if (files.length === 0) return;
         
@@ -190,25 +190,25 @@ class DRManagerApp {
         this.showFileForm();
     }
 
-    // 文件验证
+    // 
     validateFile(file) {
         const maxSize = 100 * 1024 * 1024; // 100MB
         const allowedTypes = ['image/', 'application/', 'text/', 'audio/', 'video/'];
         
         if (file.size > maxSize) {
-            this.showNotification('文件过大，最大支持 100MB', 'error');
+            this.showNotification('， 100MB', 'error');
             return false;
         }
         
         if (!allowedTypes.some(type => file.type.startsWith(type))) {
-            this.showNotification('不支持的文件类型', 'error');
+            this.showNotification('Unsupported file type', 'error');
             return false;
         }
         
         return true;
     }
 
-    // 显示文件预览
+    // 
     showFilePreview(file) {
         const preview = document.getElementById('filePreview');
         const icon = this.getFileIcon(file.type);
@@ -220,26 +220,26 @@ class DRManagerApp {
         preview.style.display = 'block';
     }
 
-    // 显示文件表单
+    // 
     showFileForm() {
         document.getElementById('fileForm').style.display = 'block';
         document.getElementById('titleInput').value = this.selectedFile.name.split('.')[0];
     }
 
-    // 注册版权 (核心功能)
+    //  ()
     async registerCopyright() {
         if (!this.account) {
-            this.showNotification('请先连接钱包', 'error');
+            this.showNotification('', 'error');
             return;
         }
 
         if (!this.selectedFile) {
-            this.showNotification('请先选择文件', 'error');
+            this.showNotification('', 'error');
             return;
         }
 
         if (!this.contract) {
-            this.showNotification('智能合约未加载', 'error');
+            this.showNotification('', 'error');
             return;
         }
 
@@ -248,33 +248,33 @@ class DRManagerApp {
         
         try {
             btn.disabled = true;
-            btn.innerHTML = '<div class="loading-spinner"></div> 处理中...';
+            btn.innerHTML = '<div class="loading-spinner"></div> ...';
             
-            // 获取表单数据
+            // 
             const title = document.getElementById('titleInput').value.trim();
             const description = document.getElementById('descInput').value.trim();
             const category = document.getElementById('categorySelect').value;
             const price = document.getElementById('priceInput').value || '0';
             
             if (!title) {
-                throw new Error('请输入文件标题');
+                throw new Error('Please enter a file title');
             }
 
-            // 步骤1: 上传文件到 IPFS
-            this.showProgress('正在上传文件到 IPFS...', 20);
+            // 1:  IPFS
+            this.showProgress(' IPFS...', 20);
             const ipfsHash = await this.uploadFileToIPFS(this.selectedFile);
             
-            // 步骤2: 调用智能合约注册版权
-            this.showProgress('正在注册版权到区块链...', 60);
+            // 2: 
+            this.showProgress('...', 60);
             const priceInWei = ethers.utils.parseEther(price);
             
             const tx = await this.contract.registerContent(ipfsHash, title, priceInWei);
             
-            this.showProgress('等待区块链确认...', 80);
+            this.showProgress('...', 80);
             const receipt = await tx.wait();
             
-            // 步骤3: 保存到后端数据库
-            this.showProgress('保存注册信息...', 90);
+            // 3: 
+            this.showProgress('...', 90);
             await this.saveContentToBackend({
                 userAddress: this.account,
                 title,
@@ -286,29 +286,29 @@ class DRManagerApp {
                 blockNumber: receipt.blockNumber
             });
             
-            this.showProgress('注册完成！', 100);
+            this.showProgress('！', 100);
             
-            // 记录交易
+            // 
             await this.recordTransaction({
                 type: 'register',
                 userAddress: this.account,
-                contentId: ipfsHash, // 临时使用 IPFS hash 作为 ID
+                contentId: ipfsHash, //  IPFS hash  ID
                 txHash: receipt.transactionHash,
-                amount: '0', // 注册不涉及金额
+                amount: '0', // 
                 blockNumber: receipt.blockNumber,
                 gasUsed: receipt.gasUsed.toString()
             });
 
-            this.showNotification('版权注册成功！');
+            this.showNotification('Copyright registration！');
             
-            // 重置表单并刷新数据
+            // Reset form
             this.resetForm();
             await this.loadUserContent();
             await this.loadUserStats();
             
         } catch (error) {
-            console.error('❌ 版权注册失败:', error);
-            this.showNotification(`注册失败: ${error.message}`, 'error');
+            console.error('❌ Copyright registration:', error);
+            this.showNotification(`: ${error.message}`, 'error');
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalHTML;
@@ -316,7 +316,7 @@ class DRManagerApp {
         }
     }
 
-    // 上传文件到 IPFS (调用后端 API)
+    //  IPFS ( API)
     async uploadFileToIPFS(file) {
         try {
             const formData = new FormData();
@@ -329,21 +329,21 @@ class DRManagerApp {
             
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'IPFS 上传失败');
+                throw new Error(errorData.error || 'IPFS ');
             }
             
             const result = await response.json();
-            console.log('✅ IPFS 上传成功:', result.ipfsHash);
+            console.log('✅ IPFS :', result.ipfsHash);
             
             return result.ipfsHash;
             
         } catch (error) {
-            console.error('❌ IPFS 上传失败:', error);
+            console.error('❌ IPFS :', error);
             throw error;
         }
     }
 
-    // 保存内容信息到后端
+    // 
     async saveContentToBackend(contentData) {
         try {
             const response = await fetch(`${this.apiBase}/api/content/register`, {
@@ -356,21 +356,21 @@ class DRManagerApp {
             
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || '保存内容失败');
+                throw new Error(errorData.error || '');
             }
             
             const result = await response.json();
-            console.log('✅ 内容信息已保存到后端');
+            console.log('✅ Content saved to backend');
             
             return result;
             
         } catch (error) {
-            console.error('❌ 保存到后端失败:', error);
+            console.error('❌ :', error);
             throw error;
         }
     }
 
-    // 记录交易信息
+    // 
     async recordTransaction(transactionData) {
         try {
             const response = await fetch(`${this.apiBase}/api/transaction/record`, {
@@ -382,19 +382,19 @@ class DRManagerApp {
             });
             
             if (!response.ok) {
-                console.error('记录交易失败，但不影响主流程');
+                console.error('，');
                 return;
             }
             
-            console.log('✅ 交易记录已保存');
+            console.log('✅ ');
             
         } catch (error) {
-            console.error('❌ 记录交易失败:', error);
-            // 不抛出错误，因为这不是关键流程
+            console.error('❌ :', error);
+            // ，
         }
     }
 
-    // 加载用户内容
+    // 
     async loadUserContent() {
         if (!this.account) return;
         
@@ -402,18 +402,18 @@ class DRManagerApp {
             const response = await fetch(`${this.apiBase}/api/content/user/${this.account}`);
             
             if (!response.ok) {
-                throw new Error('获取用户内容失败');
+                throw new Error('');
             }
             
             const result = await response.json();
             this.displayUserContent(result.contents || []);
             
         } catch (error) {
-            console.error('❌ 加载用户内容失败:', error);
+            console.error('❌ :', error);
         }
     }
 
-    // 显示用户内容
+    // 
     displayUserContent(contents) {
         const container = document.getElementById('myContent');
         
@@ -421,8 +421,8 @@ class DRManagerApp {
             container.innerHTML = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">
                     <i class="fas fa-inbox" style="font-size: 3em; margin-bottom: 20px; display: block;"></i>
-                    <p>还没有注册任何内容</p>
-                    <p style="font-size: 0.9em; margin-top: 10px;">上传您的第一个文件开始保护版权吧！</p>
+                    <p>No content registered yet</p>
+                    <p style="font-size: 0.9em; margin-top: 10px;">Upload your first file to start protecting your copyright!</p>
                 </div>
             `;
             return;
@@ -435,7 +435,7 @@ class DRManagerApp {
                     ${content.title}
                 </div>
                 <div style="color: #6b7280; font-size: 0.9em; margin: 10px 0;">
-                    ${content.description || '无描述'}
+                    ${content.description || 'No description'}
                 </div>
                 <div class="content-hash">
                     IPFS: ${content.ipfsHash.slice(0, 10)}...${content.ipfsHash.slice(-8)}
@@ -446,21 +446,21 @@ class DRManagerApp {
                     </span>
                     <div class="content-actions">
                         <button class="btn" onclick="app.viewOnIPFS('${content.ipfsHash}')" style="padding: 8px 12px; font-size: 0.9em;">
-                            <i class="fas fa-external-link-alt"></i> 查看
+                            <i class="fas fa-external-link-alt"></i> 
                         </button>
                         <button class="btn" onclick="app.copyHash('${content.ipfsHash}')" style="padding: 8px 12px; font-size: 0.9em;">
-                            <i class="fas fa-copy"></i> 复制
+                            <i class="fas fa-copy"></i> 
                         </button>
                     </div>
                 </div>
                 <div style="font-size: 0.8em; color: #9ca3af; margin-top: 10px;">
-                    注册时间: ${new Date(content.timestamp).toLocaleString()}
+                    : ${new Date(content.timestamp).toLocaleString()}
                 </div>
             </div>
         `).join('');
     }
 
-    // 加载用户统计数据
+    // Load user statistics
     async loadUserStats() {
         if (!this.account) {
             this.updateStats({
@@ -480,7 +480,7 @@ class DRManagerApp {
                 this.updateStats(result.stats);
             }
             
-            // 获取当前 Gas 价格
+            //  Gas 
             if (this.provider) {
                 const gasPrice = await this.provider.getGasPrice();
                 const gasPriceGwei = ethers.utils.formatUnits(gasPrice, 'gwei');
@@ -488,18 +488,18 @@ class DRManagerApp {
             }
             
         } catch (error) {
-            console.error('❌ 加载统计数据失败:', error);
+            console.error('❌ :', error);
         }
     }
 
-    // 更新统计显示
+    // 
     updateStats(stats) {
         document.getElementById('totalFiles').textContent = stats.totalFiles || '0';
         document.getElementById('totalEarnings').textContent = `${stats.totalEarnings || '0'} ETH`;
         document.getElementById('activeLicenses').textContent = stats.activeLicenses || '0';
     }
 
-    // 显示进度
+    // Show progress
     showProgress(message, percent) {
         const container = document.getElementById('progressContainer');
         const fill = document.getElementById('progressFill');
@@ -512,12 +512,12 @@ class DRManagerApp {
         percentEl.textContent = `${percent}%`;
     }
 
-    // 隐藏进度
+    // 
     hideProgress() {
         document.getElementById('progressContainer').style.display = 'none';
     }
 
-    // 重置表单
+    // Reset form
     resetForm() {
         document.getElementById('fileInput').value = '';
         document.getElementById('fileForm').style.display = 'none';
@@ -528,20 +528,20 @@ class DRManagerApp {
         this.selectedFile = null;
     }
 
-    // 在 IPFS 网关查看文件
+    //  IPFS 
     viewOnIPFS(hash) {
         const gatewayUrl = `https://ipfs.io/ipfs/${hash}`;
         window.open(gatewayUrl, '_blank');
     }
 
-    // 复制 IPFS 哈希
+    //  IPFS 
     copyHash(hash) {
         navigator.clipboard.writeText(hash).then(() => {
-            this.showNotification('IPFS 哈希已复制到剪贴板');
+            this.showNotification('IPFS ');
         });
     }
 
-    // 获取文件图标
+    // Get file icon
     getFileIcon(type) {
         if (type.startsWith('image/')) return 'fa-image';
         if (type.startsWith('video/')) return 'fa-video';
@@ -551,7 +551,7 @@ class DRManagerApp {
         return 'fa-file';
     }
 
-    // 格式化文件大小
+    // 
     formatFileSize(bytes) {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -560,13 +560,13 @@ class DRManagerApp {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // 显示通知
+    // 
     showNotification(message, type = 'success') {
         const notification = document.getElementById('notification');
         const text = document.getElementById('notificationText');
         const icon = document.getElementById('notificationIcon');
         
-        // 设置图标和样式
+        // 
         if (type === 'error') {
             icon.className = 'fas fa-exclamation-circle';
             notification.classList.add('error');
@@ -578,17 +578,17 @@ class DRManagerApp {
         text.textContent = message;
         notification.classList.add('show');
         
-        // 3秒后自动隐藏
+        // 3
         setTimeout(() => {
             notification.classList.remove('show');
         }, 3000);
     }
 }
 
-// 创建全局应用实例
+// 
 const app = new DRManagerApp();
 
-// 页面加载完成后初始化
+// 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();
 });

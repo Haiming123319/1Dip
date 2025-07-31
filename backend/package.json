@@ -1,7 +1,7 @@
 {
   "name": "drmanager-backend",
   "version": "1.0.0",
-  "description": "DRManager 后端 API 服务器",
+  "description": "DRManager backend API service",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -16,7 +16,6 @@
     "express": "^4.21.2",
     "form-data": "^4.0.4",
     "multer": "^2.0.2",
-    "nft.storage": "^7.2.0",
     "web3.storage": "^4.5.5"
   },
   "devDependencies": {

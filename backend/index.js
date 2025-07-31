@@ -5,28 +5,28 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
-// 导入您现有的上传处理器
-const { uploadToIPFS } = require('./upload.js'); // 使用您现有的上传逻辑
+// Import your existing upload handler
+const { uploadToIPFS } = require('./upload.js'); // Use your existing upload logic
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 中间件
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 静态文件服务 (为前端提供服务)
+// Static file service (serving frontend) ()
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// 配置文件上传
+// File upload
 const upload = multer({
-    storage: multer.memoryStorage(), // 存储在内存中
+    storage: multer.memoryStorage(), // Stored in memory
     limits: {
-        fileSize: 100 * 1024 * 1024, // 100MB 限制
+        fileSize: 100 * 1024 * 1024, // 100MB limit
     },
     fileFilter: (req, file, cb) => {
-        // 文件类型验证
+        // File type validation
         const allowedTypes = [
             'image/', 'application/', 'text/', 'audio/', 'video/'
         ];
@@ -41,16 +41,16 @@ const upload = multer({
     }
 });
 
-// 存储用户数据 (开发阶段用内存，生产环境建议用数据库)
+// Store user data (Use memory in development; database recommended for production)
 const userData = {
-    uploads: new Map(),      // 上传记录
-    contents: new Map(),     // 内容记录  
-    transactions: new Map()  // 交易记录
+    uploads: new Map(),      // Upload records
+    contents: new Map(),     //   
+    transactions: new Map()  // 
 };
 
-// =================== API 路由 ===================
+// =================== API  ===================
 
-// 1. 文件上传到 IPFS
+// 1. File upload IPFS
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     try {
         console.log('📤 get upload request:', req.file?.originalname);
@@ -62,7 +62,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             });
         }
 
-        // 验证文件
+        // 
         if (req.file.size > 100 * 1024 * 1024) {
             return res.status(400).json({
                 success: false,
@@ -70,19 +70,19 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             });
         }
 
-        // 调用您现有的上传函数
+        // 
         const uploadResult = await uploadToIPFS(req.file.buffer, req.file.originalname);
         
-        // 生成上传ID
+        // ID
         const uploadId = Date.now().toString();
         
-        // 保存上传记录
+        // Upload records
         userData.uploads.set(uploadId, {
             id: uploadId,
             fileName: req.file.originalname,
             fileSize: req.file.size,
             mimeType: req.file.mimetype,
-            ipfsHash: uploadResult.ipfsHash || uploadResult.Hash, // 兼容不同返回格式
+            ipfsHash: uploadResult.ipfsHash || uploadResult.Hash, // 
             timestamp: new Date().toISOString(),
             status: 'completed'
         });
@@ -107,7 +107,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     }
 });
 
-// 2. 保存内容注册信息 (区块链交易成功后调用)
+// 2.  ()
 app.post('/api/content/register', async (req, res) => {
     try {
         const {
@@ -123,7 +123,7 @@ app.post('/api/content/register', async (req, res) => {
 
         console.log('📝 save the register info', { title, ipfsHash, txHash });
 
-        // 验证必需字段
+        // 
         if (!userAddress || !title || !ipfsHash || !txHash) {
             return res.status(400).json({
                 success: false,
@@ -131,10 +131,10 @@ app.post('/api/content/register', async (req, res) => {
             });
         }
 
-        // 生成内容ID
+        // ID
         const contentId = Date.now().toString();
 
-        // 保存内容记录
+        // 
         const contentData = {
             id: contentId,
             userAddress: userAddress.toLowerCase(),
@@ -168,13 +168,13 @@ app.post('/api/content/register', async (req, res) => {
     }
 });
 
-// 3. 获取用户的内容列表
+// 3. 
 app.get('/api/content/user/:address', async (req, res) => {
     try {
         const userAddress = req.params.address.toLowerCase();
         console.log('📋 get user content:', userAddress);
 
-        // 过滤出该用户的内容
+        // 
         const userContents = Array.from(userData.contents.values())
             .filter(content => content.userAddress === userAddress)
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -194,16 +194,16 @@ app.get('/api/content/user/:address', async (req, res) => {
     }
 });
 
-// 4. 获取所有公开内容 (市场)
+// 4.  ()
 app.get('/api/content/marketplace', async (req, res) => {
     try {
         console.log('🛒 get market content');
 
-        // 获取所有内容 (实际应用中可添加分页和过滤)
+        //  ()
         const allContents = Array.from(userData.contents.values())
             .filter(content => content.status === 'registered')
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-            .slice(0, 50); // 限制返回数量
+            .slice(0, 50); // 
 
         res.json({
             success: true,
@@ -220,7 +220,7 @@ app.get('/api/content/marketplace', async (req, res) => {
     }
 });
 
-// 5. 记录交易信息
+// 5. 
 app.post('/api/transaction/record', async (req, res) => {
     try {
         const {
@@ -264,7 +264,7 @@ app.post('/api/transaction/record', async (req, res) => {
     }
 });
 
-// 6. 获取上传状态
+// 6. 
 app.get('/api/upload/status/:uploadId', async (req, res) => {
     try {
         const uploadId = req.params.uploadId;
@@ -290,17 +290,17 @@ app.get('/api/upload/status/:uploadId', async (req, res) => {
     }
 });
 
-// 7. 健康检查
+// 7. 
 app.get('/api/health', async (req, res) => {
     try {
-        // 检查各种服务状态
+        // 
         const health = {
             status: 'healthy',
             timestamp: new Date().toISOString(),
             services: {
                 api: 'running',
-                ipfs: 'unknown', // 可以调用 IPFS 检查
-                database: 'memory' // 当前使用内存存储
+                ipfs: 'unknown', //  IPFS 
+                database: 'memory' // 
             },
             stats: {
                 totalUploads: userData.uploads.size,
@@ -309,9 +309,9 @@ app.get('/api/health', async (req, res) => {
             }
         };
 
-        // 可以添加 IPFS 健康检查
+        //  IPFS 
         try {
-            // 这里可以调用您的 IPFS 检查函数
+            //  IPFS 
             health.services.ipfs = 'healthy';
         } catch {
             health.services.ipfs = 'error';
@@ -327,13 +327,13 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-// 8. 获取统计数据
+// 8. 
 app.get('/api/stats/:address?', async (req, res) => {
     try {
         const userAddress = req.params.address?.toLowerCase();
 
         if (userAddress) {
-            // 用户统计
+            // 
             const userContents = Array.from(userData.contents.values())
                 .filter(content => content.userAddress === userAddress);
             
@@ -349,12 +349,12 @@ app.get('/api/stats/:address?', async (req, res) => {
                 stats: {
                     totalFiles: userContents.length,
                     totalEarnings: totalEarnings.toFixed(4),
-                    activeLicenses: 0, // 需要从合约获取
+                    activeLicenses: 0, // 
                     totalTransactions: userTransactions.length
                 }
             });
         } else {
-            // 全局统计
+            // 
             res.json({
                 success: true,
                 stats: {
@@ -374,59 +374,59 @@ app.get('/api/stats/:address?', async (req, res) => {
     }
 });
 
-// =================== 错误处理 ===================
+// ===================  ===================
 
-// 文件上传错误处理
+// File upload
 app.use((error, req, res, next) => {
     if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
                 success: false,
-                error: '文件大小超过限制 (100MB)'
+                error: ' (100MB)'
             });
         }
     }
     
-    console.error('服务器错误:', error);
+    console.error(':', error);
     res.status(500).json({
         success: false,
-        error: error.message || '服务器内部错误'
+        error: error.message || ''
     });
 });
 
-// 404 处理
+// 404 
 app.use((req, res) => {
     res.status(404).json({
         success: false,
-        error: 'API 端点不存在'
+        error: 'API '
     });
 });
 
-// =================== 启动服务器 ===================
+// ===================  ===================
 
 app.listen(PORT, () => {
-    console.log('🚀 DRManager 后端服务已启动');
-    console.log(`📡 API 服务: http://localhost:${PORT}`);
-    console.log(`🌐 前端界面: http://localhost:${PORT}`);
-    console.log(`💾 当前使用内存存储 (重启后数据会丢失)`);
+    console.log('🚀 DRManager ');
+    console.log(`📡 API : http://localhost:${PORT}`);
+    console.log(`🌐 : http://localhost:${PORT}`);
+    console.log(`💾  ()`);
     console.log('');
-    console.log('📋 可用的 API 端点:');
-    console.log('  POST /api/upload              - 文件上传');
-    console.log('  POST /api/content/register     - 注册内容');
-    console.log('  GET  /api/content/user/:address - 用户内容');
-    console.log('  GET  /api/content/marketplace  - 市场内容');
-    console.log('  POST /api/transaction/record   - 记录交易');
-    console.log('  GET  /api/stats/:address       - 获取统计');
-    console.log('  GET  /api/health               - 健康检查');
+    console.log('📋  API :');
+    console.log('  POST /api/upload              - File upload');
+    console.log('  POST /api/content/register     - ');
+    console.log('  GET  /api/content/user/:address - ');
+    console.log('  GET  /api/content/marketplace  - ');
+    console.log('  POST /api/transaction/record   - ');
+    console.log('  GET  /api/stats/:address       - ');
+    console.log('  GET  /api/health               - ');
     console.log('');
     
-    // 定期保存数据到文件 (可选)
+    //  ()
     if (process.env.SAVE_TO_FILE === 'true') {
-        setInterval(saveDataToFile, 60000); // 每分钟保存一次
+        setInterval(saveDataToFile, 60000); // 
     }
 });
 
-// 数据持久化 (可选)
+//  ()
 function saveDataToFile() {
     try {
         const data = {
@@ -437,13 +437,13 @@ function saveDataToFile() {
         };
         
         fs.writeFileSync('./data-backup.json', JSON.stringify(data, null, 2));
-        console.log('💾 数据已备份到文件');
+        console.log('💾 ');
     } catch (error) {
-        console.error('❌ 数据备份失败:', error);
+        console.error('❌ :', error);
     }
 }
 
-// 启动时加载数据 (可选)
+//  ()
 function loadDataFromFile() {
     try {
         if (fs.existsSync('./data-backup.json')) {
@@ -453,25 +453,25 @@ function loadDataFromFile() {
             userData.contents = new Map(data.contents || []);
             userData.transactions = new Map(data.transactions || []);
             
-            console.log('📂 从文件加载数据成功');
+            console.log('📂 ');
         }
     } catch (error) {
-        console.error('❌ 从文件加载数据失败:', error);
+        console.error('❌ :', error);
     }
 }
 
-// 启动时加载数据
+// 
 if (process.env.SAVE_TO_FILE === 'true') {
     loadDataFromFile();
 }
 
-// 优雅关闭
+// 
 process.on('SIGINT', () => {
-    console.log('\n🛑 正在关闭服务器...');
+    console.log('\n🛑 ...');
     
     if (process.env.SAVE_TO_FILE === 'true') {
         saveDataToFile();
-        console.log('💾 数据已保存');
+        console.log('💾 ');
     }
     
     process.exit(0);
