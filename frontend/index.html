@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DRManager - Copyright Registration</title>
+</head>
+<body>
+    <h2>Register Work</h2>
+    <input type="file" id="fileInput" />
+    <input type="text" id="titleInput" placeholder="Enter Title" />
+    <button onclick="registerWork()">Register</button>
+
+    <h2>Create License</h2>
+    <input type="file" id="fileInput2" />
+    <input type="text" id="priceInput" placeholder="Price in ETH" />
+    <button onclick="createLicense()">Create License</button>
+
+    <h2>Buy License</h2>
+    <input type="file" id="fileInput3" />
+    <button onclick="purchaseLicense()">Buy</button>
+
+    <div id="status"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
