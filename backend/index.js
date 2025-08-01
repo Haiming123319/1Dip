@@ -1,12 +1,20 @@
-const express = require('express');
-const multer = require('multer');
-const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
-require('dotenv').config();
+import express from 'express';
+import multer from 'multer';
+import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
 // Import your existing upload handler
-const { uploadToIPFS } = require('./upload.js'); // Use your existing upload logic
+import { uploadToIPFS } from './upload.js'; // Use your existing upload logic
+
+// ES modules equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -404,28 +412,6 @@ app.use((req, res) => {
 
 // ===================  ===================
 
-app.listen(PORT, () => {
-    console.log('🚀 DRManager ');
-    console.log(`📡 API : http://localhost:${PORT}`);
-    console.log(`🌐 : http://localhost:${PORT}`);
-    console.log(`💾  ()`);
-    console.log('');
-    console.log('📋  API :');
-    console.log('  POST /api/upload              - File upload');
-    console.log('  POST /api/content/register     - ');
-    console.log('  GET  /api/content/user/:address - ');
-    console.log('  GET  /api/content/marketplace  - ');
-    console.log('  POST /api/transaction/record   - ');
-    console.log('  GET  /api/stats/:address       - ');
-    console.log('  GET  /api/health               - ');
-    console.log('');
-    
-    //  ()
-    if (process.env.SAVE_TO_FILE === 'true') {
-        setInterval(saveDataToFile, 60000); // 
-    }
-});
-
 //  ()
 function saveDataToFile() {
     try {
@@ -477,37 +463,26 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
-module.exports = app;
-// const express = require('express');
-// const multer = require('multer');
-// const fs = require('fs');
-// const path = require('path');
-// const { uploadToIPFS, calculateHash, registerWorkOnChain } = require('./upload');
+app.listen(PORT, () => {
+    console.log('🚀 DRManager ');
+    console.log(`📡 API : http://localhost:${PORT}`);
+    console.log(`🌐 : http://localhost:${PORT}`);
+    console.log(`💾  ()`);
+    console.log('');
+    console.log('📋  API :');
+    console.log('  POST /api/upload              - File upload');
+    console.log('  POST /api/content/register     - ');
+    console.log('  GET  /api/content/user/:address - ');
+    console.log('  GET  /api/content/marketplace  - ');
+    console.log('  POST /api/transaction/record   - ');
+    console.log('  GET  /api/stats/:address       - ');
+    console.log('  GET  /api/health               - ');
+    console.log('');
+    
+    //  ()
+    if (process.env.SAVE_TO_FILE === 'true') {
+        setInterval(saveDataToFile, 60000); // 
+    }
+});
 
-// require('dotenv').config();
-// const app = express();
-// const PORT = 3000;
-// const upload = multer({ dest: 'uploads/' });
-
-// app.post('/upload', upload.single('file'), async (req, res) => {
-//     try {
-//         const filePath = req.file.path;
-//         const buffer = fs.readFileSync(filePath);
-
-//         const hash = calculateHash(buffer);
-//         const cid = await uploadToIPFS(filePath);
-//         const title = req.body.title || "Untitled";
-
-//         await registerWorkOnChain(hash, title, cid);
-
-//         fs.unlinkSync(filePath);
-//         res.json({ hash, cid });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).send('Upload failed');
-//     }
-// });
-
-// app.listen(PORT, () => {
-//     console.log(`Server running at http://localhost:${PORT}`);
-// });
+export default app;
