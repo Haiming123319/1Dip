@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "DRManager backend API service",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",

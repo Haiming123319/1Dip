@@ -1,31 +1,22 @@
-const fs = require('fs');
-const crypto = require('crypto');
-const { NFTStorage, File } = require('nft.storage');
-//const { Web3Storage } = require('web3.storage');
-const { registerWork } = require('./interact'); 
-require('dotenv').config();
-
-function calculateHash(buffer) {
-  const hash = crypto.createHash('sha256').update(buffer).digest('hex');
-  return '0x' + hash;
-}
+import { create } from '@web3-storage/w3up-client';
+import { filesFromPaths } from 'files-from-path';
 
 async function uploadToIPFS(filePath) {
-  const content = fs.readFileSync(filePath);
-  const fileName = filePath.split('/').pop();
-  const file = new File([content], fileName);
-  const client = new NFTStorage({ token: process.env.NFT_STORAGE_TOKEN });
-  const cid = await client.storeBlob(file); // 更轻、更快
-  return cid;
+  const client = await create();
+
+  await client.login('weiqingzuo@163.com');
+
+  // Use your space DID to set the current space
+  const spaceDid = 'did:key:z6Mkkjd65KSLqaceC9VASqy8JN9sX3r1ZKMJLoGSg2Y1TQbj';
+  await client.setCurrentSpace(spaceDid);
+
+  const files = await filesFromPaths([filePath]);
+  console.log('files:', files);
+
+  const cid = await client.uploadDirectory(files);
+
+  console.log('Uploaded successfully, CID:', cid.toString());
+  return cid.toString();
 }
 
-async function registerWorkOnChain(hash, title, cid) {
-  await registerWork(hash, title, cid); // ✅ 继续调用你的 interact.js 函数
-}
-
-module.exports = {
-  calculateHash,
-  uploadToIPFS,
-  registerWorkOnChain
-};
-
+export { uploadToIPFS };
