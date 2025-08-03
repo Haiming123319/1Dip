@@ -1,15 +1,18 @@
 // DRManager Main frontend application file
 // Fully integrated with backend API
 
+// DRManager Main frontend application file
+// Fully integrated with backend API
+
 class DRManagerApp {
     constructor() {
         this.provider = null;
         this.signer = null;
         this.contract = null;
         this.account = null;
-        this.contractAddress = '0x1fE38AFc5B06e147dCb0e2eF46FC7ee27bfd278f';
+        this.contractAddress = '0xBE334a4f3e51FEbA9A1C73B92ecC8cd095C9d0aC';
         this.selectedFile = null;
-        this.apiBase = ''; // Base URL for backend API ()
+        this.apiBase = 'http://localhost:3000'; // 根据你的后端端口调整
     }
 
     // Initialize application
@@ -151,10 +154,10 @@ class DRManagerApp {
                 this.signer
             );
             
-            console.log('✅ ');
+            console.log('✅ Contract loaded successfully');
         } catch (error) {
-            console.error('❌ :', error);
-            this.showNotification('', 'error');
+            console.error('❌ Contract loading failed:', error);
+            this.showNotification('Contract loading failed', 'error');
         }
     }
 
@@ -167,12 +170,12 @@ class DRManagerApp {
         if (connected && this.account) {
             statusDot.classList.add('connected');
             walletStatus.textContent = `${this.account.slice(0, 6)}...${this.account.slice(-4)}`;
-            connectBtn.innerHTML = '<i class="fas fa-check"></i> ';
+            connectBtn.innerHTML = '<i class="fas fa-check"></i> Connected';
             connectBtn.disabled = true;
         } else {
             statusDot.classList.remove('connected');
-            walletStatus.textContent = '';
-            connectBtn.innerHTML = '<i class="fas fa-wallet"></i>  MetaMask';
+            walletStatus.textContent = 'Not Connected';
+            connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect MetaMask';
             connectBtn.disabled = false;
         }
     }
@@ -196,7 +199,7 @@ class DRManagerApp {
         const allowedTypes = ['image/', 'application/', 'text/', 'audio/', 'video/'];
         
         if (file.size > maxSize) {
-            this.showNotification('， 100MB', 'error');
+            this.showNotification('File too large, max 100MB', 'error');
             return false;
         }
         
@@ -211,35 +214,46 @@ class DRManagerApp {
     // 
     showFilePreview(file) {
         const preview = document.getElementById('filePreview');
+        if (!preview) return; // 如果元素不存在就跳过
+        
         const icon = this.getFileIcon(file.type);
         
-        document.getElementById('fileIcon').className = `fas ${icon} file-icon`;
-        document.getElementById('fileName').textContent = file.name;
-        document.getElementById('fileSize').textContent = this.formatFileSize(file.size);
+        const fileIcon = document.getElementById('fileIcon');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        
+        if (fileIcon) fileIcon.className = `fas ${icon} file-icon`;
+        if (fileName) fileName.textContent = file.name;
+        if (fileSize) fileSize.textContent = this.formatFileSize(file.size);
         
         preview.style.display = 'block';
     }
 
     // 
     showFileForm() {
-        document.getElementById('fileForm').style.display = 'block';
-        document.getElementById('titleInput').value = this.selectedFile.name.split('.')[0];
+        const fileForm = document.getElementById('fileForm');
+        if (fileForm) {
+            fileForm.style.display = 'block';
+            const titleInput = document.getElementById('titleInput');
+            if (titleInput) {
+                titleInput.value = this.selectedFile.name.split('.')[0];
+            }
+        }
     }
 
-    //  ()
     async registerCopyright() {
         if (!this.account) {
-            this.showNotification('', 'error');
+            this.showNotification('Please connect wallet first', 'error');
             return;
         }
 
         if (!this.selectedFile) {
-            this.showNotification('', 'error');
+            this.showNotification('Please select a file first', 'error');
             return;
         }
 
         if (!this.contract) {
-            this.showNotification('', 'error');
+            this.showNotification('Contract not loaded', 'error');
             return;
         }
 
@@ -248,33 +262,31 @@ class DRManagerApp {
         
         try {
             btn.disabled = true;
-            btn.innerHTML = '<div class="loading-spinner"></div> ...';
+            btn.innerHTML = '<div class="loading-spinner"></div> Registering...';
             
-            // 
-            const title = document.getElementById('titleInput').value.trim();
-            const description = document.getElementById('descInput').value.trim();
-            const category = document.getElementById('categorySelect').value;
-            const price = document.getElementById('priceInput').value || '0';
+            const title = document.getElementById('titleInput')?.value?.trim() || this.selectedFile.name;
+            const description = document.getElementById('descInput')?.value?.trim() || '';
+            const category = document.getElementById('categorySelect')?.value || 'other';
+            const price = document.getElementById('priceInput')?.value || '0';
             
             if (!title) {
                 throw new Error('Please enter a file title');
             }
 
-            // 1:  IPFS
-            this.showProgress(' IPFS...', 20);
+            this.showProgress('Uploading to IPFS...', 20);
             const ipfsHash = await this.uploadFileToIPFS(this.selectedFile);
             
-            // 2: 
-            this.showProgress('...', 60);
-            const priceInWei = ethers.utils.parseEther(price);
+
+            this.showProgress('Generating file hash...', 40);
+            const fileHash = await this.calculateFileHash(this.selectedFile);
             
-            const tx = await this.contract.registerContent(ipfsHash, title, priceInWei);
+            this.showProgress('Registering on blockchain...', 60);
+            const tx = await this.contract.registerWork(fileHash, title, ipfsHash);
             
-            this.showProgress('...', 80);
+            this.showProgress('Waiting for transaction confirmation...', 80);
             const receipt = await tx.wait();
-            
-            // 3: 
-            this.showProgress('...', 90);
+
+            this.showProgress('Saving registration info...', 90);
             await this.saveContentToBackend({
                 userAddress: this.account,
                 title,
@@ -282,24 +294,14 @@ class DRManagerApp {
                 category,
                 price,
                 ipfsHash,
+                fileHash,
                 txHash: receipt.transactionHash,
                 blockNumber: receipt.blockNumber
             });
             
-            this.showProgress('！', 100);
-            
-            // 
-            await this.recordTransaction({
-                type: 'register',
-                userAddress: this.account,
-                contentId: ipfsHash, //  IPFS hash  ID
-                txHash: receipt.transactionHash,
-                amount: '0', // 
-                blockNumber: receipt.blockNumber,
-                gasUsed: receipt.gasUsed.toString()
-            });
+            this.showProgress('Registration complete!', 100);
 
-            this.showNotification('Copyright registration！');
+            this.showNotification('Copyright registration successful!');
             
             // Reset form
             this.resetForm();
@@ -307,13 +309,21 @@ class DRManagerApp {
             await this.loadUserStats();
             
         } catch (error) {
-            console.error('❌ Copyright registration:', error);
-            this.showNotification(`: ${error.message}`, 'error');
+            console.error('❌ Copyright registration failed:', error);
+            this.showNotification(`Registration failed: ${error.message}`, 'error');
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalHTML;
             this.hideProgress();
         }
+    }
+
+    // 新增: 计算文件哈希函数
+    async calculateFileHash(file) {
+        const arrayBuffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     //  IPFS ( API)
@@ -329,16 +339,16 @@ class DRManagerApp {
             
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'IPFS ');
+                throw new Error(errorData.error || 'IPFS upload failed');
             }
             
             const result = await response.json();
-            console.log('✅ IPFS :', result.ipfsHash);
+            console.log('✅ IPFS upload successful:', result.ipfsHash);
             
             return result.ipfsHash;
             
         } catch (error) {
-            console.error('❌ IPFS :', error);
+            console.error('❌ IPFS upload failed:', error);
             throw error;
         }
     }
@@ -356,7 +366,7 @@ class DRManagerApp {
             
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || '');
+                throw new Error(errorData.error || 'Backend save failed');
             }
             
             const result = await response.json();
@@ -365,7 +375,7 @@ class DRManagerApp {
             return result;
             
         } catch (error) {
-            console.error('❌ :', error);
+            console.error('❌ Backend save failed:', error);
             throw error;
         }
     }
@@ -382,15 +392,15 @@ class DRManagerApp {
             });
             
             if (!response.ok) {
-                console.error('，');
+                console.error('Transaction recording failed');
                 return;
             }
             
-            console.log('✅ ');
+            console.log('✅ Transaction recorded');
             
         } catch (error) {
-            console.error('❌ :', error);
-            // ，
+            console.error('❌ Transaction recording failed:', error);
+            // 不抛出错误，因为这不是关键功能
         }
     }
 
@@ -402,20 +412,21 @@ class DRManagerApp {
             const response = await fetch(`${this.apiBase}/api/content/user/${this.account}`);
             
             if (!response.ok) {
-                throw new Error('');
+                throw new Error('Failed to load user content');
             }
             
             const result = await response.json();
             this.displayUserContent(result.contents || []);
             
         } catch (error) {
-            console.error('❌ :', error);
+            console.error('❌ Failed to load user content:', error);
         }
     }
 
     // 
     displayUserContent(contents) {
         const container = document.getElementById('myContent');
+        if (!container) return;
         
         if (contents.length === 0) {
             container.innerHTML = `
@@ -446,15 +457,15 @@ class DRManagerApp {
                     </span>
                     <div class="content-actions">
                         <button class="btn" onclick="app.viewOnIPFS('${content.ipfsHash}')" style="padding: 8px 12px; font-size: 0.9em;">
-                            <i class="fas fa-external-link-alt"></i> 
+                            <i class="fas fa-external-link-alt"></i> View
                         </button>
                         <button class="btn" onclick="app.copyHash('${content.ipfsHash}')" style="padding: 8px 12px; font-size: 0.9em;">
-                            <i class="fas fa-copy"></i> 
+                            <i class="fas fa-copy"></i> Copy
                         </button>
                     </div>
                 </div>
                 <div style="font-size: 0.8em; color: #9ca3af; margin-top: 10px;">
-                    : ${new Date(content.timestamp).toLocaleString()}
+                    Registered: ${new Date(content.timestamp).toLocaleString()}
                 </div>
             </div>
         `).join('');
@@ -484,47 +495,66 @@ class DRManagerApp {
             if (this.provider) {
                 const gasPrice = await this.provider.getGasPrice();
                 const gasPriceGwei = ethers.utils.formatUnits(gasPrice, 'gwei');
-                document.getElementById('gasPrice').textContent = `${parseFloat(gasPriceGwei).toFixed(1)} Gwei`;
+                const gasPriceEl = document.getElementById('gasPrice');
+                if (gasPriceEl) {
+                    gasPriceEl.textContent = `${parseFloat(gasPriceGwei).toFixed(1)} Gwei`;
+                }
             }
             
         } catch (error) {
-            console.error('❌ :', error);
+            console.error('❌ Failed to load stats:', error);
         }
     }
 
     // 
     updateStats(stats) {
-        document.getElementById('totalFiles').textContent = stats.totalFiles || '0';
-        document.getElementById('totalEarnings').textContent = `${stats.totalEarnings || '0'} ETH`;
-        document.getElementById('activeLicenses').textContent = stats.activeLicenses || '0';
+        const elements = {
+            totalFiles: document.getElementById('totalFiles'),
+            totalEarnings: document.getElementById('totalEarnings'),
+            activeLicenses: document.getElementById('activeLicenses')
+        };
+        
+        if (elements.totalFiles) elements.totalFiles.textContent = stats.totalFiles || '0';
+        if (elements.totalEarnings) elements.totalEarnings.textContent = `${stats.totalEarnings || '0'} ETH`;
+        if (elements.activeLicenses) elements.activeLicenses.textContent = stats.activeLicenses || '0';
     }
 
-    // Show progress
     showProgress(message, percent) {
         const container = document.getElementById('progressContainer');
         const fill = document.getElementById('progressFill');
         const label = document.getElementById('progressLabel');
         const percentEl = document.getElementById('progressPercent');
         
-        container.style.display = 'block';
-        fill.style.width = `${percent}%`;
-        label.textContent = message;
-        percentEl.textContent = `${percent}%`;
+        if (container) container.style.display = 'block';
+        if (fill) fill.style.width = `${percent}%`;
+        if (label) label.textContent = message;
+        if (percentEl) percentEl.textContent = `${percent}%`;
     }
 
     // 
     hideProgress() {
-        document.getElementById('progressContainer').style.display = 'none';
+        const container = document.getElementById('progressContainer');
+        if (container) container.style.display = 'none';
     }
 
     // Reset form
     resetForm() {
-        document.getElementById('fileInput').value = '';
-        document.getElementById('fileForm').style.display = 'none';
-        document.getElementById('filePreview').style.display = 'none';
-        document.getElementById('titleInput').value = '';
-        document.getElementById('descInput').value = '';
-        document.getElementById('priceInput').value = '';
+        const elements = {
+            fileInput: document.getElementById('fileInput'),
+            fileForm: document.getElementById('fileForm'),
+            filePreview: document.getElementById('filePreview'),
+            titleInput: document.getElementById('titleInput'),
+            descInput: document.getElementById('descInput'),
+            priceInput: document.getElementById('priceInput')
+        };
+        
+        if (elements.fileInput) elements.fileInput.value = '';
+        if (elements.fileForm) elements.fileForm.style.display = 'none';
+        if (elements.filePreview) elements.filePreview.style.display = 'none';
+        if (elements.titleInput) elements.titleInput.value = '';
+        if (elements.descInput) elements.descInput.value = '';
+        if (elements.priceInput) elements.priceInput.value = '';
+        
         this.selectedFile = null;
     }
 
@@ -537,7 +567,7 @@ class DRManagerApp {
     //  IPFS 
     copyHash(hash) {
         navigator.clipboard.writeText(hash).then(() => {
-            this.showNotification('IPFS ');
+            this.showNotification('IPFS hash copied to clipboard');
         });
     }
 
@@ -560,11 +590,19 @@ class DRManagerApp {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // 
+ 
     showNotification(message, type = 'success') {
         const notification = document.getElementById('notification');
         const text = document.getElementById('notificationText');
         const icon = document.getElementById('notificationIcon');
+        
+        if (!notification || !text || !icon) {
+            console.log(`${type.toUpperCase()}: ${message}`);
+            if (type === 'error') {
+                alert(`Error: ${message}`);
+            }
+            return;
+        }
         
         // 
         if (type === 'error') {
