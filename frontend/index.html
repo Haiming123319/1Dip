@@ -1,411 +1,402 @@
-<!-- <!DOCTYPE html>
-<html>
-<head>
-    <title>DRManager - Copyright Registration</title>
-</head>
-<body>
-    <h2>Register Work</h2>
-    <input type="file" id="fileInput" />
-    <input type="text" id="titleInput" placeholder="Enter Title" />
-    <button onclick="registerWork()">Register</button>
 
-    <h2>Create License</h2>
-    <input type="file" id="fileInput2" />
-    <input type="text" id="priceInput" placeholder="Price in ETH" />
-    <button onclick="createLicense()">Create License</button>
-
-    <h2>Buy License</h2>
-    <input type="file" id="fileInput3" />
-    <button onclick="purchaseLicense()">Buy</button>
-
-    <div id="status"></div>
-
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <script src="app.js"></script>
-</body>
-</html> -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DRManager - Blockchain Copyright Management</title>
+    <title>DRManager - Decentralized Rights Management</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             margin: 0;
-            padding: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             color: #333;
         }
-        .section {
-            max-width: 600px;
-            margin: 50px auto;
-            background: #fff;
-            border-radius: 12px;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: rgba(255,255,255,0.95);
             padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        .header h1 {
+            color: #4f46e5;
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+        .header p {
+            color: #6b7280;
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+        .wallet-section {
+            background: rgba(255,255,255,0.95);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        h2 {
-            margin-bottom: 20px;
-            color: #4c51bf;
-            font-size: 1.5em;
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
         }
-        input[type="file"],
-        input[type="text"],
-        input[type="number"],
-        textarea,
-        select {
+        .section {
+            background: rgba(255,255,255,0.95);
+            padding: 25px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .section:hover {
+            transform: translateY(-5px);
+        }
+        .section h2 {
+            color: #4f46e5;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
             display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+        .form-group input, .form-group textarea, .form-group select {
             width: 100%;
             padding: 12px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
+            border: 2px solid #e5e7eb;
             border-radius: 8px;
-            font-size: 1em;
+            font-size: 14px;
+            transition: border-color 0.3s;
             box-sizing: border-box;
         }
-        button {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+        .btn {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
             color: white;
-            padding: 12px 20px;
             border: none;
+            padding: 12px 24px;
             border-radius: 8px;
-            font-weight: bold;
             cursor: pointer;
-            transition: transform 0.2s ease;
+            font-weight: 600;
+            transition: all 0.3s;
             width: 100%;
-            font-size: 1em;
+            font-size: 16px;
         }
-        button:hover {
+        .btn:hover {
             transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
         }
-        button:disabled {
-            opacity: 0.6;
+        .btn:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
             transform: none;
         }
-        #status {
-            margin-top: 20px;
-            text-align: center;
-            font-weight: 500;
-            color: #444;
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
         }
-        
-        /* 新增样式 */
-        .wallet-section {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
+        .btn-success {
+            background: linear-gradient(135deg, #059669, #047857);
         }
-        
-        .wallet-status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #ef4444;
-            transition: background 0.3s;
-        }
-        
-        .status-dot.connected {
-            background: #10b981;
-        }
-        
-        .file-preview {
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
             display: none;
-            background: #f8fafc;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        .progress {
+            display: none;
+            margin: 15px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed);
+            width: 0%;
+            transition: width 0.3s;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: rgba(79, 70, 229, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #4f46e5;
+        }
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .file-drop {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .file-drop:hover, .file-drop.dragover {
+            border-color: #4f46e5;
+            background: rgba(79, 70, 229, 0.05);
+        }
+        .results {
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .license-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 15px;
         }
-        
-        .file-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .file-icon {
-            font-size: 2em;
-            color: #667eea;
-        }
-        .progress-container {
-            display: none;
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        .progress-bar {
-            background: #e5e7eb;
-            border-radius: 8px;
-            height: 8px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        
-        .progress-fill {
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            height: 100%;
-            transition: width 0.3s;
-            width: 0%;
-        }
-        
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #10b981;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            transform: translateX(400px);
-            transition: transform 0.3s;
-            z-index: 1000;
-        }
-        
-        .notification.show {
-            transform: translateX(0);
-        }
-        
-        .notification.error {
-            background: #ef4444;
-        }
-        
-        .notification-content {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .loading-spinner {
-            width: 16px;
-            height: 16px;
-            border: 2px solid #ffffff40;
-            border-top: 2px solid #ffffff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-
-        .stats-section {
-            max-width: 600px;
-            margin: 20px auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 15px;
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .stat-value {
-            font-size: 1.5em;
+        .license-title {
             font-weight: bold;
-            color: #667eea;
+            color: #111827;
+            margin-bottom: 8px;
         }
-        
-        .stat-label {
+        .license-info {
+            font-size: 14px;
             color: #6b7280;
-            margin-top: 5px;
-            font-size: 0.9em;
-        }
-        
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-        
-        .content-item {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 15px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .content-title {
-            font-weight: bold;
-            color: #1f2937;
             margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
-        
-        .content-hash {
-            font-family: monospace;
-            font-size: 0.9em;
-            color: #6b7280;
-            background: #e5e7eb;
-            padding: 5px 8px;
-            border-radius: 4px;
-            margin: 10px 0;
-        }
-        
-        .content-actions {
+        .license-actions {
             display: flex;
             gap: 10px;
         }
-        
         .btn-small {
             padding: 6px 12px;
-            font-size: 0.9em;
+            font-size: 14px;
             width: auto;
         }
-        
-        #uploadZone {
-            border: 2px dashed #d1d5db;
-            border-radius: 8px;
-            padding: 40px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 20px;
-        }
-        
-        #uploadZone:hover {
-            border-color: #667eea;
-            background: #f8fafc;
-        }
-        
-        #fileForm {
-            display: none;
+        #walletAddress {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            background: #f3f4f6;
         }
     </style>
 </head>
 <body>
-    <div class="wallet-section">
-        <div class="wallet-status">
-            <div id="statusDot" class="status-dot"></div>
-            <span>Wallet: <span id="walletStatus">Not Connected</span></span>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔐 DRManager</h1>
+            <p>Decentralized Digital Rights Management Platform</p>
+            <p>Upload, Register, License & Trade Your Digital Assets</p>
         </div>
-        <button id="connectBtn">
-            <i class="fas fa-wallet"></i> Connect MetaMask
-        </button>
-    </div>
 
-    <div class="stats-section">
-        <div class="stat-card">
-            <div id="totalFiles" class="stat-value">0</div>
-            <div class="stat-label">Files Registered</div>
+        <!-- Wallet Connection -->
+        <div class="wallet-section">
+            <h2>💳 Wallet Connection</h2>
+            <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                <button id="connectWallet" class="btn" style="flex: 1; min-width: 200px;">Connect MetaMask</button>
+                <input type="text" id="walletAddress" placeholder="Wallet address will appear here" readonly style="flex: 2; min-width: 300px;">
+            </div>
+            <div id="walletStatus" class="status"></div>
         </div>
-        <div class="stat-card">
-            <div id="totalEarnings" class="stat-value">0 ETH</div>
-            <div class="stat-label">Total Earnings</div>
-        </div>
-        <div class="stat-card">
-            <div id="activeLicenses" class="stat-value">0</div>
-            <div class="stat-label">Active Licenses</div>
-        </div>
-        <div class="stat-card">
-            <div id="gasPrice" class="stat-value">- Gwei</div>
-            <div class="stat-label">Gas Price</div>
-        </div>
-    </div>
 
-    <div class="section">
-        <h2><i class="fas fa-upload"></i> Register Work</h2>
-        
-        <div id="uploadZone">
-            <i class="fas fa-cloud-upload-alt" style="font-size: 3em; color: #d1d5db; margin-bottom: 15px;"></i>
-            <p style="font-size: 1.1em; margin-bottom: 10px;">Click or drag files here</p>
-            <p style="color: #6b7280; font-size: 0.9em;">Support images, documents, audio, video (max 100MB)</p>
-        </div>
-        
-        <input type="file" id="fileInput" style="display: none;" />
-        
-        <div id="filePreview" class="file-preview">
-            <div class="file-info">
-                <i id="fileIcon" class="file-icon"></i>
-                <div>
-                    <div id="fileName" style="font-weight: bold;"></div>
-                    <div id="fileSize" style="color: #6b7280; font-size: 0.9em;"></div>
+        <div class="grid">
+            <!-- File Upload Section -->
+            <div class="section">
+                <h2>📤 Upload File</h2>
+                <div class="file-drop" onclick="document.getElementById('fileInput').click()">
+                    <p>📁 Click to select file or drag & drop</p>
+                    <p style="font-size: 14px; color: #6b7280;">Supported: Images, Documents, Videos (Max 100MB)</p>
+                </div>
+                <input type="file" id="fileInput" style="display: none;" accept="*/*">
+                <div class="progress" id="uploadProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <p>Uploading to IPFS...</p>
+                </div>
+                <div id="uploadStatus" class="status"></div>
+                <button id="uploadBtn" class="btn" disabled>Upload to IPFS</button>
+            </div>
+
+            <!-- Content Registration -->
+            <div class="section">
+                <h2>📋 Register Content</h2>
+                <div class="form-group">
+                    <label for="contentTitle">Title*</label>
+                    <input type="text" id="contentTitle" placeholder="Enter content title">
+                </div>
+                <div class="form-group">
+                    <label for="contentDescription">Description</label>
+                    <textarea id="contentDescription" placeholder="Describe your content" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="contentCategory">Category</label>
+                    <select id="contentCategory">
+                        <option value="image">Image</option>
+                        <option value="document">Document</option>
+                        <option value="video">Video</option>
+                        <option value="audio">Audio</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="progress" id="registerProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <p>Registering on blockchain...</p>
+                </div>
+                <div id="registerStatus" class="status"></div>
+                <button id="registerBtn" class="btn" disabled>Register Copyright</button>
+            </div>
+
+            <!-- Create License -->
+            <div class="section">
+                <h2>📜 Create License</h2>
+                <div class="form-group">
+                    <label for="myWorksSelect">Select Your Work*</label>
+                    <select id="myWorksSelect">
+                        <option value="">Choose registered content...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="licensePrice">License Price (ETH)*</label>
+                    <input type="number" id="licensePrice" placeholder="0.01" step="0.001" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="usageScope">Usage Scope*</label>
+                    <input type="text" id="usageScope" placeholder="e.g., Commercial use, Personal use">
+                </div>
+                <div class="form-group">
+                    <label for="region">Region*</label>
+                    <input type="text" id="region" placeholder="e.g., Global, USA, Europe">
+                </div>
+                <div class="form-group">
+                    <label for="duration">Duration (days)</label>
+                    <input type="number" id="duration" placeholder="365" min="1" max="3650">
+                </div>
+                <div class="progress" id="createLicenseProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <p>Creating license...</p>
+                </div>
+                <div id="createLicenseStatus" class="status"></div>
+                <button id="createLicenseBtn" class="btn" disabled>Create License</button>
+            </div>
+
+            <!-- Buy License -->
+            <div class="section">
+                <h2>🛒 Buy License</h2>
+                <div class="form-group">
+                    <label for="searchHash">Search by Content Hash</label>
+                    <input type="text" id="searchHash" placeholder="Enter IPFS hash or content ID">
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button id="searchLicenseBtn" class="btn btn-secondary" style="flex: 1;">Search License</button>
+                    <button id="loadMarketplaceBtn" class="btn btn-success" style="flex: 1;">Browse Marketplace</button>
+                </div>
+                <div class="progress" id="buyLicenseProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <p>Loading licenses...</p>
+                </div>
+                <div id="buyLicenseStatus" class="status"></div>
+                <div id="licenseResults" class="results"></div>
+            </div>
+
+            <!-- User Statistics -->
+            <div class="section">
+                <h2>📊 User Statistics</h2>
+                <div id="userStats" class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Files Uploaded</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Content Registered</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Active Licenses</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Total Earnings</div>
+                    </div>
+                </div>
+                <button id="loadStatsBtn" class="btn btn-secondary" style="margin-top: 15px;">Refresh Statistics</button>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="section">
+                <h2>⚡ Quick Actions</h2>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="window.open('database.html', '_blank')">🗄️ View Database</button>
+                    <button class="btn btn-secondary" onclick="window.open('query.html', '_blank')">🔍 Query Records</button>
+                    <button class="btn btn-secondary" onclick="window.open('check-metamask.html', '_blank')">🦊 Check MetaMask</button>
                 </div>
             </div>
         </div>
-        
-        <div id="fileForm">
-            <input type="text" id="titleInput" placeholder="Enter Title" />
-            <textarea id="descInput" placeholder="Description (optional)" rows="3"></textarea>
-            <select id="categorySelect">
-                <option value="image">Image</option>
-                <option value="document">Document</option>
-                <option value="audio">Audio</option>
-                <option value="video">Video</option>
-                <option value="other">Other</option>
-            </select>
-            <input type="number" id="priceInput" placeholder="License Price in ETH (optional)" step="0.001" min="0" />
-            <button id="registerBtn"><i class="fas fa-shield-alt"></i> Register Copyright</button>
-        </div>
-        
-        <div id="progressContainer" class="progress-container">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <span id="progressLabel">Processing...</span>
-                <span id="progressPercent">0%</span>
-            </div>
-            <div class="progress-bar">
-                <div id="progressFill" class="progress-fill"></div>
-            </div>
-        </div>
     </div>
 
-    <div class="section">
-        <h2><i class="fas fa-file-contract"></i> Create License</h2>
-        <input type="file" id="fileInput2" />
-        <input type="text" id="priceInput" placeholder="Price in ETH" />
-        <button onclick="createLicense()">Create License</button>
-    </div>
-
-    <div class="section">
-        <h2><i class="fas fa-shopping-cart"></i> Buy License</h2>
-        <input type="file" id="fileInput3" />
-        <button onclick="purchaseLicense()">Buy</button>
-        <div id="status"></div>
-    </div>
-
-    <div class="section">
-        <h2><i class="fas fa-folder"></i> My Works</h2>
-        <div id="myContent" class="content-grid">
-        </div>
-    </div>
-
-    <div id="notification" class="notification">
-        <div class="notification-content">
-            <i id="notificationIcon" class="fas fa-check-circle"></i>
-            <span id="notificationText"></span>
-        </div>
-    </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRManager - Database Viewer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f7fa;
+            color: #333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4f46e5;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        .tab.active {
+            background: white;
+            border-bottom-color: #4f46e5;
+            color: #4f46e5;
+        }
+        .tab:hover {
+            background: #e9ecef;
+        }
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #374151;
+            position: sticky;
+            top: 0;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .status.completed { background: #dcfce7; color: #166534; }
+        .status.registered { background: #dbeafe; color: #1e40af; }
+        .status.active { background: #fef3c7; color: #92400e; }
+        .status.sold { background: #fecaca; color: #991b1b; }
+        .hash {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 11px;
+            background: #f3f4f6;
+            padding: 2px 4px;
+            border-radius: 3px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .refresh-btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .refresh-btn:hover {
+            background: #3730a3;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4f46e5;
+        }
+        .stat-label {
+            color: #6b7280;
+            margin-top: 5px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+        }
+        .timestamp {
+            font-size: 11px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗄️ DRManager Database Viewer</h1>
+        
+        <button class="refresh-btn" onclick="loadAllData()">
+            🔄 Refresh Data
+        </button>
+
+        <div class="stats" id="stats"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('contents')">📄 Registered Content</button>
+            <button class="tab" onclick="showTab('uploads')">📁 File Uploads</button>
+            <button class="tab" onclick="showTab('licenses')">📜 Licenses</button>
+            <button class="tab" onclick="showTab('transactions')">💰 Transactions</button>
+        </div>
+
+        <div id="contents" class="tab-content active">
+            <h2>📄 Registered Content Table</h2>
+            <div class="table-container">
+                <table id="contentsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>User Address</th>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>IPFS Hash</th>
+                            <th>File Hash</th>
+                            <th>TX Hash</th>
+                            <th>Block Number</th>
+                            <th>Timestamp</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="uploads" class="tab-content">
+            <h2>📁 File Uploads Table</h2>
+            <div class="table-container">
+                <table id="uploadsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>File Name</th>
+                            <th>File Size</th>
+                            <th>MIME Type</th>
+                            <th>IPFS Hash</th>
+                            <th>Timestamp</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="licenses" class="tab-content">
+            <h2>📜 Licenses Table</h2>
+            <div class="table-container">
+                <table id="licensesTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Content ID</th>
+                            <th>User Address</th>
+                            <th>Price</th>
+                            <th>Usage Scope</th>
+                            <th>Region</th>
+                            <th>Expiry Date</th>
+                            <th>Status</th>
+                            <th>Buyer Address</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="transactions" class="tab-content">
+            <h2>💰 Transactions Table</h2>
+            <div class="table-container">
+                <table id="transactionsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>User Address</th>
+                            <th>Content ID</th>
+                            <th>TX Hash</th>
+                            <th>Amount</th>
+                            <th>Block Number</th>
+                            <th>Gas Used</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+
+        function showTab(tabName) {
+            // Hide all tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatTimestamp(timestamp) {
+            return new Date(timestamp).toLocaleString('en-US');
+        }
+
+        function truncateHash(hash, length = 10) {
+            if (!hash) return '';
+            return hash.length > length ? hash.substring(0, length) + '...' : hash;
+        }
+
+        async function loadContents() {
+            try {
+                // Get all database data
+                const response = await fetch(`${API_BASE}/api/database/all`);
+                const result = await response.json();
+                const data = { contents: result.data.contents };
+                
+                const tbody = document.querySelector('#contentsTable tbody');
+                tbody.innerHTML = '';
+                
+                if (data.contents && data.contents.length > 0) {
+                    data.contents.forEach(item => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${item.id}</td>
+                            <td class="hash" title="${item.userAddress}">${truncateHash(item.userAddress, 8)}</td>
+                            <td>${item.title}</td>
+                            <td>${item.description || '-'}</td>
+                            <td>${item.category}</td>
+                            <td>${item.price} ETH</td>
+                            <td class="hash" title="${item.ipfsHash}">${truncateHash(item.ipfsHash)}</td>
+                            <td class="hash" title="${item.fileHash}">${truncateHash(item.fileHash)}</td>
+                            <td class="hash" title="${item.txHash}">${truncateHash(item.txHash)}</td>
+                            <td>${item.blockNumber}</td>
+                            <td class="timestamp">${formatTimestamp(item.timestamp)}</td>
+                            <td><span class="status ${item.status}">${item.status}</span></td>
+                        `;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="12" class="empty">No registered content</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to load contents:', error);
+                document.querySelector('#contentsTable tbody').innerHTML = 
+                    '<tr><td colspan="12" class="error">Failed to load: ' + error.message + '</td></tr>';
+            }
+        }
+
+        async function loadUploads() {
+            try {
+                const response = await fetch(`${API_BASE}/api/database/all`);
+                const result = await response.json();
+                const uploads = result.data.uploads;
+                
+                const tbody = document.querySelector('#uploadsTable tbody');
+                tbody.innerHTML = '';
+                
+                if (uploads && uploads.length > 0) {
+                    uploads.forEach(item => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${item.id}</td>
+                            <td>${item.fileName}</td>
+                            <td>${formatFileSize(item.fileSize)}</td>
+                            <td>${item.mimeType}</td>
+                            <td class="hash" title="${item.ipfsHash}">${truncateHash(item.ipfsHash)}</td>
+                            <td class="timestamp">${formatTimestamp(item.timestamp)}</td>
+                            <td><span class="status ${item.status}">${item.status}</span></td>
+                        `;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty">No upload records</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to load uploads:', error);
+                document.querySelector('#uploadsTable tbody').innerHTML = 
+                    '<tr><td colspan="7" class="error">Failed to load: ' + error.message + '</td></tr>';
+            }
+        }
+
+        async function loadLicenses() {
+            try {
+                const response = await fetch(`${API_BASE}/api/database/all`);
+                const result = await response.json();
+                const licenses = result.data.licenses;
+                
+                const tbody = document.querySelector('#licensesTable tbody');
+                tbody.innerHTML = '';
+                
+                if (licenses && licenses.length > 0) {
+                    licenses.forEach(item => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${item.id}</td>
+                            <td>${item.contentId}</td>
+                            <td class="hash" title="${item.userAddress}">${truncateHash(item.userAddress, 8)}</td>
+                            <td>${item.price} ETH</td>
+                            <td>${item.usageScope}</td>
+                            <td>${item.region}</td>
+                            <td class="timestamp">${formatTimestamp(item.expiryDate)}</td>
+                            <td><span class="status ${item.status}">${item.status}</span></td>
+                            <td class="hash" title="${item.buyerAddress || ''}">${truncateHash(item.buyerAddress || '-', 8)}</td>
+                            <td class="timestamp">${formatTimestamp(item.timestamp)}</td>
+                        `;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="10" class="empty">No licenses</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to load licenses:', error);
+                document.querySelector('#licensesTable tbody').innerHTML = 
+                    '<tr><td colspan="10" class="error">Failed to load: ' + error.message + '</td></tr>';
+            }
+        }
+
+        async function loadTransactions() {
+            try {
+                const response = await fetch(`${API_BASE}/api/database/all`);
+                const result = await response.json();
+                const transactions = result.data.transactions;
+                
+                const tbody = document.querySelector('#transactionsTable tbody');
+                tbody.innerHTML = '';
+                
+                if (transactions && transactions.length > 0) {
+                    transactions.forEach(item => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${item.id}</td>
+                            <td>${item.type}</td>
+                            <td class="hash" title="${item.userAddress}">${truncateHash(item.userAddress, 8)}</td>
+                            <td>${item.contentId || '-'}</td>
+                            <td class="hash" title="${item.txHash}">${truncateHash(item.txHash)}</td>
+                            <td>${item.amount} ETH</td>
+                            <td>${item.blockNumber || '-'}</td>
+                            <td>${item.gasUsed || '-'}</td>
+                            <td class="timestamp">${formatTimestamp(item.timestamp)}</td>
+                        `;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="9" class="empty">No transactions</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to load transactions:', error);
+                document.querySelector('#transactionsTable tbody').innerHTML = 
+                    '<tr><td colspan="9" class="error">Failed to load: ' + error.message + '</td></tr>';
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                
+                const statsContainer = document.getElementById('stats');
+                if (data.stats) {
+                    statsContainer.innerHTML = `
+                        <div class="stat-card">
+                            <div class="stat-value">${data.stats.totalUploads || 0}</div>
+                            <div class="stat-label">Total File Uploads</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${data.stats.totalContents || 0}</div>
+                            <div class="stat-label">Registered Content</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${data.stats.totalTransactions || 0}</div>
+                            <div class="stat-label">Total Transactions</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${data.stats.totalUsers || 0}</div>
+                            <div class="stat-label">Total Users</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to load statistics:', error);
+            }
+        }
+
+        async function loadAllData() {
+            await loadStats();
+            await loadContents();
+            await loadUploads();
+            await loadLicenses();
+            await loadTransactions();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAllData();
+        });
+    </script>
+</body>
+</html> 

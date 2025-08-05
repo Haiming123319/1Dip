@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaMask 简单测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #ccc;
+        }
+        .success { background: #d4edda; border-left-color: #28a745; }
+        .error { background: #f8d7da; border-left-color: #dc3545; }
+        .warning { background: #fff3cd; border-left-color: #ffc107; }
+        .info { background: #d1ecf1; border-left-color: #17a2b8; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .code {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🦊 MetaMask 简单连接测试</h1>
+    
+    <div id="status"></div>
+    
+    <button id="checkBtn">检查MetaMask</button>
+    <button id="connectBtn" disabled>连接钱包</button>
+    <button id="clearBtn">清除日志</button>
+    
+    <div id="log"></div>
+
+    <script>
+        class SimpleMetaMaskTest {
+            constructor() {
+                this.log = document.getElementById('log');
+                this.status = document.getElementById('status');
+                this.setupButtons();
+                this.addLog('页面加载完成', 'info');
+                this.checkMetaMask();
+            }
+
+            setupButtons() {
+                document.getElementById('checkBtn').onclick = () => this.checkMetaMask();
+                document.getElementById('connectBtn').onclick = () => this.connectWallet();
+                document.getElementById('clearBtn').onclick = () => this.clearLog();
+            }
+
+            addLog(message, type = 'info') {
+                const div = document.createElement('div');
+                div.className = `status ${type}`;
+                div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+                this.log.appendChild(div);
+                this.log.scrollTop = this.log.scrollHeight;
+                console.log(`[${type.toUpperCase()}] ${message}`);
+            }
+
+            clearLog() {
+                this.log.innerHTML = '';
+            }
+
+            async checkMetaMask() {
+                this.addLog('开始检查MetaMask...', 'info');
+                
+                // 1. 检查window.ethereum是否存在
+                if (typeof window.ethereum === 'undefined') {
+                    this.addLog('❌ window.ethereum 未找到', 'error');
+                    this.addLog('请确保已安装MetaMask扩展并刷新页面', 'warning');
+                    this.status.innerHTML = '<div class="status error">❌ MetaMask未安装或未加载</div>';
+                    return;
+                }
+                
+                this.addLog('✅ window.ethereum 已找到', 'success');
+                
+                // 2. 检查是否是MetaMask
+                if (window.ethereum.isMetaMask) {
+                    this.addLog('✅ 确认是MetaMask钱包', 'success');
+                } else {
+                    this.addLog('⚠️ 可能不是MetaMask钱包', 'warning');
+                }
+                
+                // 3. 检查当前连接状态
+                try {
+                    const accounts = await window.ethereum.request({ 
+                        method: 'eth_accounts' 
+                    });
+                    
+                    if (accounts.length > 0) {
+                        this.addLog(`✅ 已连接账户: ${accounts[0]}`, 'success');
+                        document.getElementById('connectBtn').textContent = '已连接';
+                        document.getElementById('connectBtn').disabled = true;
+                    } else {
+                        this.addLog('ℹ️ 未连接任何账户', 'info');
+                        document.getElementById('connectBtn').disabled = false;
+                    }
+                } catch (error) {
+                    this.addLog(`❌ 检查账户失败: ${error.message}`, 'error');
+                }
+                
+                // 4. 检查网络
+                try {
+                    const chainId = await window.ethereum.request({ 
+                        method: 'eth_chainId' 
+                    });
+                    const networks = {
+                        '0x1': 'Ethereum 主网',
+                        '0x5': 'Goerli 测试网',
+                        '0xaa36a7': 'Sepolia 测试网',
+                        '0x89': 'Polygon 主网'
+                    };
+                    const networkName = networks[chainId] || `未知网络 (${chainId})`;
+                    this.addLog(`🌐 当前网络: ${networkName}`, 'info');
+                } catch (error) {
+                    this.addLog(`❌ 获取网络失败: ${error.message}`, 'error');
+                }
+                
+                this.status.innerHTML = '<div class="status success">✅ MetaMask检查完成</div>';
+            }
+
+            async connectWallet() {
+                this.addLog('开始连接钱包...', 'info');
+                
+                try {
+                    if (typeof window.ethereum === 'undefined') {
+                        throw new Error('MetaMask未安装');
+                    }
+                    
+                    this.addLog('发送连接请求...', 'info');
+                    const accounts = await window.ethereum.request({
+                        method: 'eth_requestAccounts'
+                    });
+                    
+                    if (accounts.length === 0) {
+                        throw new Error('未获取到账户');
+                    }
+                    
+                    const account = accounts[0];
+                    this.addLog(`✅ 连接成功！账户: ${account}`, 'success');
+                    
+                    // 测试基本功能
+                    this.addLog('测试基本功能...', 'info');
+                    
+                    // 获取余额
+                    try {
+                        const balance = await window.ethereum.request({
+                            method: 'eth_getBalance',
+                            params: [account, 'latest']
+                        });
+                        const balanceInEth = parseInt(balance, 16) / Math.pow(10, 18);
+                        this.addLog(`💰 账户余额: ${balanceInEth.toFixed(4)} ETH`, 'info');
+                    } catch (error) {
+                        this.addLog(`⚠️ 获取余额失败: ${error.message}`, 'warning');
+                    }
+                    
+                    document.getElementById('connectBtn').textContent = '已连接: ' + account.slice(0, 6) + '...';
+                    document.getElementById('connectBtn').disabled = true;
+                    
+                    this.status.innerHTML = '<div class="status success">✅ 钱包连接成功！</div>';
+                    
+                } catch (error) {
+                    this.addLog(`❌ 连接失败: ${error.message}`, 'error');
+                    
+                    let errorMessage = '连接失败';
+                    if (error.code === 4001) {
+                        errorMessage = '用户拒绝了连接请求';
+                    } else if (error.code === -32002) {
+                        errorMessage = '连接请求已在处理中，请查看MetaMask';
+                    }
+                    
+                    this.status.innerHTML = `<div class="status error">❌ ${errorMessage}</div>`;
+                }
+            }
+        }
+
+        // 等待页面完全加载
+        window.addEventListener('load', () => {
+            // 给MetaMask一些时间注入
+            setTimeout(() => {
+                new SimpleMetaMaskTest();
+            }, 500);
+        });
+    </script>
+</body>
+</html> 

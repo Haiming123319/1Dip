@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRManager - 记录查询</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 16px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #4f46e5;
+            text-align: center;
+        }
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .search-box input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .search-box button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .search-box button:hover {
+            background: #3730a3;
+        }
+        .record {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            background: #f9fafb;
+        }
+        .record-title {
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+        .record-info {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+        .record-hash {
+            font-family: monospace;
+            background: #e5e7eb;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 4px 0;
+            word-break: break-all;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f0f9ff;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #0369a1;
+        }
+        .stat-label {
+            color: #075985;
+            font-size: 0.9em;
+        }
+        .loading {
+            text-align: center;
+            color: #6b7280;
+            padding: 40px;
+        }
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+        .success {
+            background: #f0fdf4;
+            color: #166534;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+        .view-btn {
+            background: #059669;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .view-btn:hover {
+            background: #047857;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔍 DRManager 记录查询</h1>
+        <div class="search-box">
+            <input type="text" id="addressInput" placeholder="输入钱包地址 (如: 0xa399943cd68cc800a4763569b4e42e4a0cfd568b)" 
+                   value="0xa399943cd68cc800a4763569b4e42e4a0cfd568b">
+            <button onclick="queryRecords()">查询记录</button>
+            <button onclick="queryStats()">查询统计</button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+
+        async function queryRecords() {
+            const address = document.getElementById('addressInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            
+            if (!address) {
+                resultDiv.innerHTML = '<div class="error">请输入钱包地址</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="loading">正在查询记录...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/content/user/${address}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || '查询失败');
+                }
+
+                let html = `<div class="success">✅ 找到 ${data.total} 条记录</div>`;
+                
+                if (data.contents.length === 0) {
+                    html += '<div class="loading">该地址暂无注册内容</div>';
+                } else {
+                    data.contents.forEach(content => {
+                        html += `
+                            <div class="record">
+                                <div class="record-title">📁 ${content.title}</div>
+                                <div class="record-info">
+                                    <strong>类别:</strong> ${content.category}<br>
+                                    <strong>价格:</strong> ${content.price} ETH<br>
+                                    <strong>注册时间:</strong> ${new Date(content.timestamp).toLocaleString()}<br>
+                                    <strong>状态:</strong> ${content.status === 'registered' ? '✅ 已注册' : content.status}
+                                </div>
+                                <div class="record-info" style="margin-top: 12px;">
+                                    <strong>IPFS哈希:</strong>
+                                    <div class="record-hash">
+                                        ${content.ipfsHash}
+                                        <button class="view-btn" onclick="viewOnIPFS('${content.ipfsHash}')">查看文件</button>
+                                    </div>
+                                    <strong>文件哈希:</strong>
+                                    <div class="record-hash">${content.fileHash}</div>
+                                    <strong>交易哈希:</strong>
+                                    <div class="record-hash">${content.txHash}</div>
+                                </div>
+                                ${content.description ? `<div class="record-info"><strong>描述:</strong> ${content.description}</div>` : ''}
+                            </div>
+                        `;
+                    });
+                }
+
+                resultDiv.innerHTML = html;
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 查询失败: ${error.message}</div>`;
+            }
+        }
+
+        async function queryStats() {
+            const address = document.getElementById('addressInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            
+            if (!address) {
+                resultDiv.innerHTML = '<div class="error">请输入钱包地址</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="loading">正在查询统计信息...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/stats/${address}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || '查询失败');
+                }
+
+                const stats = data.stats;
+                const html = `
+                    <div class="success">✅ 统计信息查询成功</div>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.totalFiles}</div>
+                            <div class="stat-label">注册文件数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.totalEarnings} ETH</div>
+                            <div class="stat-label">总收益</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.activeLicenses}</div>
+                            <div class="stat-label">活跃许可</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.totalTransactions}</div>
+                            <div class="stat-label">总交易数</div>
+                        </div>
+                    </div>
+                `;
+
+                resultDiv.innerHTML = html;
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 查询失败: ${error.message}</div>`;
+            }
+        }
+
+        function viewOnIPFS(hash) {
+            const gatewayUrl = `https://ipfs.io/ipfs/${hash}`;
+            window.open(gatewayUrl, '_blank');
+        }
+
+        // 页面加载时自动查询
+        document.addEventListener('DOMContentLoaded', () => {
+            queryRecords();
+        });
+    </script>
+</body>
+</html> 

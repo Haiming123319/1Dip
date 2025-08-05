@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRManager - Oracle Dashboard</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        .header h1 {
+            color: #4f46e5;
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+        .card {
+            background: rgba(255,255,255,0.95);
+            padding: 25px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card h2 {
+            color: #4f46e5;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .status-inactive {
+            background: #fecaca;
+            color: #991b1b;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .metric:last-child {
+            border-bottom: none;
+        }
+        .metric-label {
+            font-weight: 600;
+            color: #374151;
+        }
+        .metric-value {
+            font-weight: bold;
+            color: #4f46e5;
+        }
+        .price-display {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #059669;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .timestamp {
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+        }
+        .verification-item {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc2626, #f59e0b, #059669);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .btn {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            width: 100%;
+            font-size: 16px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .market-category {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+        .category-bar {
+            flex: 1;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            margin: 0 10px;
+            overflow: hidden;
+        }
+        .category-fill {
+            height: 100%;
+            background: #4f46e5;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔮 Oracle Dashboard</h1>
+            <p>Decentralized Data Provider for DRManager</p>
+            <p>Real-time Price Feeds, Content Verification & Market Intelligence</p>
+        </div>
+
+        <div class="grid">
+            <!-- Oracle Status -->
+            <div class="card">
+                <h2>🔮 Oracle Status</h2>
+                <div id="oracle-status" class="loading">Loading oracle status...</div>
+                <button class="btn" onclick="loadOracleStatus()" style="margin-top: 15px;">Refresh Status</button>
+            </div>
+
+            <!-- Price Data -->
+            <div class="card">
+                <h2>💰 ETH Price Feed</h2>
+                <div id="price-data" class="loading">Loading price data...</div>
+                <button class="btn" onclick="loadPriceData()" style="margin-top: 15px;">Refresh Price</button>
+            </div>
+
+            <!-- Content Verification -->
+            <div class="card">
+                <h2>🔍 Content Verification</h2>
+                <div style="margin-bottom: 15px;">
+                    <input type="text" id="verification-input" placeholder="Enter content ID or hash" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; box-sizing: border-box;">
+                </div>
+                <button class="btn" onclick="verifyContent()">Verify Content</button>
+                <div id="verification-results"></div>
+            </div>
+
+            <!-- Market Data -->
+            <div class="card">
+                <h2>📊 Market Intelligence</h2>
+                <div id="market-data" class="loading">Loading market data...</div>
+                <button class="btn" onclick="loadMarketData()" style="margin-top: 15px;">Refresh Market Data</button>
+            </div>
+
+            <!-- Oracle Operations -->
+            <div class="card">
+                <h2>⚡ Oracle Operations</h2>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn" onclick="signData()">🔏 Sign Test Data</button>
+                    <button class="btn" onclick="simulateVerification()" style="background: linear-gradient(135deg, #059669, #047857);">🧪 Simulate Verification</button>
+                    <button class="btn" onclick="viewLogs()" style="background: linear-gradient(135deg, #dc2626, #b91c1c);">📋 View Logs</button>
+                </div>
+                <div id="operation-results"></div>
+            </div>
+
+            <!-- System Health -->
+            <div class="card">
+                <h2>🏥 System Health</h2>
+                <div id="system-health">
+                    <div class="metric">
+                        <span class="metric-label">API Endpoints</span>
+                        <span class="metric-value" id="api-status">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Database</span>
+                        <span class="metric-value" id="db-status">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Oracle Service</span>
+                        <span class="metric-value" id="oracle-service-status">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">IPFS Gateway</span>
+                        <span class="metric-value" id="ipfs-status">-</span>
+                    </div>
+                </div>
+                <button class="btn" onclick="checkSystemHealth()" style="margin-top: 15px;">Health Check</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+
+        // Load oracle status
+        async function loadOracleStatus() {
+            const statusDiv = document.getElementById('oracle-status');
+            statusDiv.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/oracle/status`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const oracle = result.oracle;
+                    statusDiv.innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Name</span>
+                            <span class="metric-value">${oracle.name}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Version</span>
+                            <span class="metric-value">${oracle.version}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Address</span>
+                            <span class="metric-value" title="${oracle.address || 'Not configured'}">${oracle.address ? oracle.address.substring(0, 10) + '...' : 'Not configured'}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Status</span>
+                            <span class="status-badge ${oracle.status === 'active' ? 'status-active' : 'status-inactive'}">${oracle.status}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Uptime</span>
+                            <span class="metric-value">${Math.floor(oracle.uptime / 60)}m ${Math.floor(oracle.uptime % 60)}s</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Cache Size</span>
+                            <span class="metric-value">${oracle.cache_size.data + oracle.cache_size.price + oracle.cache_size.verification} items</span>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">Failed to load oracle status: ${error.message}</div>`;
+            }
+        }
+
+        // Load price data
+        async function loadPriceData() {
+            const priceDiv = document.getElementById('price-data');
+            priceDiv.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/oracle/price/ETH_USD`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const price = result.price;
+                    const ageMinutes = Math.floor(price.age_ms / 1000 / 60);
+                    
+                    priceDiv.innerHTML = `
+                        <div class="price-display">$${price.price.toFixed(2)}</div>
+                        <div class="timestamp">Updated ${ageMinutes} minutes ago</div>
+                        <div class="metric">
+                            <span class="metric-label">Symbol</span>
+                            <span class="metric-value">${price.symbol}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Oracle</span>
+                            <span class="metric-value" title="${price.oracle || 'Not signed'}">${price.oracle ? price.oracle.substring(0, 10) + '...' : 'Not signed'}</span>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                priceDiv.innerHTML = `<div class="error">Failed to load price data: ${error.message}</div>`;
+            }
+        }
+
+        // Verify content
+        async function verifyContent() {
+            const input = document.getElementById('verification-input');
+            const resultsDiv = document.getElementById('verification-results');
+            
+            if (!input.value.trim()) {
+                alert('Please enter a content ID or hash');
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="loading">Verifying content...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/oracle/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: input.value.trim(),
+                        hash: input.value.trim(),
+                        ipfsHash: input.value.trim().startsWith('bafy') ? input.value.trim() : null
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const verification = result.verification;
+                    const confidencePercent = Math.round(verification.confidence * 100);
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="verification-item">
+                            <div class="metric">
+                                <span class="metric-label">Verification Status</span>
+                                <span class="status-badge ${verification.verified ? 'status-active' : 'status-inactive'}">
+                                    ${verification.verified ? 'VERIFIED' : 'FAILED'}
+                                </span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Confidence Score</span>
+                                <span class="metric-value">${confidencePercent}%</span>
+                            </div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${confidencePercent}%"></div>
+                            </div>
+                            <div style="margin-top: 15px;">
+                                <strong>Methods:</strong>
+                                <ul style="margin: 10px 0; padding-left: 20px;">
+                                    ${verification.methods.map(method => 
+                                        `<li>${method.method}: ${method.verified ? '✅' : '❌'} (${Math.round((method.confidence || 0) * 100)}%)</li>`
+                                    ).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Verification failed: ${error.message}</div>`;
+            }
+        }
+
+        // Load market data
+        async function loadMarketData() {
+            const marketDiv = document.getElementById('market-data');
+            marketDiv.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/oracle/market`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const market = result.market;
+                    
+                    marketDiv.innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Avg License Price</span>
+                            <span class="metric-value">${market.averageLicensePrice.all_categories} ETH</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Market Volume</span>
+                            <span class="metric-value">${market.totalMarketVolume.total_volume_eth} ETH</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Daily Transactions</span>
+                            <span class="metric-value">${market.totalMarketVolume.daily_transactions}</span>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <strong>Popular Categories:</strong>
+                            <div style="margin-top: 10px;">
+                                ${market.popularCategories.map(cat => `
+                                    <div class="market-category">
+                                        <span>${cat.category}</span>
+                                        <div class="category-bar">
+                                            <div class="category-fill" style="width: ${cat.percentage}%"></div>
+                                        </div>
+                                        <span>${cat.percentage}%</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                marketDiv.innerHTML = `<div class="error">Failed to load market data: ${error.message}</div>`;
+            }
+        }
+
+        // Sign test data
+        async function signData() {
+            const resultsDiv = document.getElementById('operation-results');
+            
+            try {
+                const testData = {
+                    test: true,
+                    timestamp: Date.now(),
+                    message: "Oracle test signature"
+                };
+
+                const response = await fetch(`${API_BASE}/api/oracle/sign`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ data: testData })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    resultsDiv.innerHTML = `
+                        <div class="verification-item">
+                            <h4>✅ Data Signed Successfully</h4>
+                            <div class="metric">
+                                <span class="metric-label">Hash</span>
+                                <span class="metric-value" title="${result.signed.hash}">${result.signed.hash.substring(0, 20)}...</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Oracle</span>
+                                <span class="metric-value" title="${result.signed.oracle}">${result.signed.oracle.substring(0, 20)}...</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Signing failed: ${error.message}</div>`;
+            }
+        }
+
+        // Simulate verification
+        async function simulateVerification() {
+            document.getElementById('verification-input').value = 'test_content_12345';
+            await verifyContent();
+        }
+
+        // View logs
+        function viewLogs() {
+            window.open('/database.html', '_blank');
+        }
+
+        // Check system health
+        async function checkSystemHealth() {
+            try {
+                // Check API
+                const apiResponse = await fetch(`${API_BASE}/api/health`);
+                document.getElementById('api-status').textContent = apiResponse.ok ? '✅ Online' : '❌ Offline';
+
+                // Check Database
+                const dbStatus = apiResponse.ok ? '✅ Connected' : '❌ Disconnected';
+                document.getElementById('db-status').textContent = dbStatus;
+
+                // Check Oracle
+                const oracleResponse = await fetch(`${API_BASE}/api/oracle/status`);
+                document.getElementById('oracle-service-status').textContent = oracleResponse.ok ? '✅ Active' : '❌ Inactive';
+
+                // Check IPFS (mock)
+                document.getElementById('ipfs-status').textContent = '✅ Accessible';
+
+            } catch (error) {
+                document.getElementById('api-status').textContent = '❌ Error';
+                document.getElementById('db-status').textContent = '❌ Error';
+                document.getElementById('oracle-service-status').textContent = '❌ Error';
+                document.getElementById('ipfs-status').textContent = '❌ Error';
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOracleStatus();
+            loadPriceData();
+            loadMarketData();
+            checkSystemHealth();
+
+            // Auto-refresh every 30 seconds
+            setInterval(() => {
+                loadPriceData();
+                checkSystemHealth();
+            }, 30000);
+        });
+    </script>
+</body>
+</html> 

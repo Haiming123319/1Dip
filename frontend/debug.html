@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaMask Connection Debug</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .status {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #007cba;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #f0fff4;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #005f8a;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .code {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 MetaMask Connection Debug Tool</h1>
+    
+    <div id="status" class="status">
+        <h3>状态检查</h3>
+        <p>正在检查...</p>
+    </div>
+
+    <button id="checkBtn">重新检查</button>
+    <button id="connectBtn" disabled>连接MetaMask</button>
+    <button id="testBtn" disabled>测试功能</button>
+
+    <div id="results"></div>
+
+    <script>
+        class MetaMaskDebugger {
+            constructor() {
+                this.provider = null;
+                this.signer = null;
+                this.account = null;
+            }
+
+            async init() {
+                await this.runDiagnostics();
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('checkBtn').onclick = () => this.runDiagnostics();
+                document.getElementById('connectBtn').onclick = () => this.connectWallet();
+                document.getElementById('testBtn').onclick = () => this.testFunctionality();
+            }
+
+            async runDiagnostics() {
+                const statusDiv = document.getElementById('status');
+                const resultsDiv = document.getElementById('results');
+                let html = '<h3>📋 诊断结果</h3>';
+
+                try {
+                    // 1. 检查MetaMask是否安装
+                    if (typeof window.ethereum === 'undefined') {
+                        html += '<div class="status error">❌ MetaMask未安装</div>';
+                        html += '<p>请安装MetaMask浏览器扩展: <a href="https://metamask.io" target="_blank">https://metamask.io</a></p>';
+                        statusDiv.innerHTML = html;
+                        return;
+                    }
+                    html += '<div class="status success">✅ MetaMask已安装</div>';
+
+                    // 2. 检查ethers.js
+                    if (typeof ethers === 'undefined') {
+                        html += '<div class="status error">❌ Ethers.js未加载</div>';
+                    } else {
+                        html += '<div class="status success">✅ Ethers.js已加载 (版本: ' + ethers.version + ')</div>';
+                    }
+
+                    // 3. 检查当前连接状态
+                    try {
+                        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                        if (accounts.length > 0) {
+                            html += '<div class="status success">✅ 钱包已连接: ' + accounts[0] + '</div>';
+                            document.getElementById('connectBtn').textContent = '已连接';
+                            document.getElementById('testBtn').disabled = false;
+                            this.account = accounts[0];
+                        } else {
+                            html += '<div class="status">⚠️ 钱包未连接</div>';
+                            document.getElementById('connectBtn').disabled = false;
+                        }
+                    } catch (error) {
+                        html += '<div class="status error">❌ 检查连接状态失败: ' + error.message + '</div>';
+                    }
+
+                    // 4. 检查网络
+                    try {
+                        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                        const networkNames = {
+                            '0x1': 'Ethereum Mainnet',
+                            '0x5': 'Goerli Testnet',
+                            '0xaa36a7': 'Sepolia Testnet',
+                            '0x89': 'Polygon Mainnet'
+                        };
+                        const networkName = networkNames[chainId] || `未知网络 (${chainId})`;
+                        html += '<div class="status">🌐 当前网络: ' + networkName + '</div>';
+                    } catch (error) {
+                        html += '<div class="status error">❌ 获取网络信息失败: ' + error.message + '</div>';
+                    }
+
+                    // 5. 检查权限
+                    try {
+                        const permissions = await window.ethereum.request({
+                            method: 'wallet_getPermissions'
+                        });
+                        html += '<div class="status">🔐 权限数量: ' + permissions.length + '</div>';
+                    } catch (error) {
+                        html += '<div class="status">🔐 权限检查: 不支持或出错</div>';
+                    }
+
+                    resultsDiv.innerHTML = html;
+
+                } catch (error) {
+                    statusDiv.innerHTML = '<div class="status error">❌ 诊断过程出错: ' + error.message + '</div>';
+                }
+            }
+
+            async connectWallet() {
+                try {
+                    console.log('🔗 开始连接MetaMask...');
+                    
+                    const accounts = await window.ethereum.request({
+                        method: 'eth_requestAccounts'
+                    });
+
+                    if (accounts.length === 0) {
+                        throw new Error('用户拒绝连接');
+                    }
+
+                    this.account = accounts[0];
+                    this.provider = new ethers.providers.Web3Provider(window.ethereum);
+                    this.signer = this.provider.getSigner();
+
+                    console.log('✅ 连接成功!', this.account);
+                    
+                    document.getElementById('connectBtn').textContent = '已连接: ' + this.account.slice(0, 6) + '...' + this.account.slice(-4);
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('testBtn').disabled = false;
+
+                    await this.runDiagnostics();
+
+                } catch (error) {
+                    console.error('❌ 连接失败:', error);
+                    alert('连接失败: ' + error.message);
+                }
+            }
+
+            async testFunctionality() {
+                if (!this.provider || !this.signer) {
+                    alert('请先连接钱包');
+                    return;
+                }
+
+                try {
+                    // 测试获取余额
+                    const balance = await this.provider.getBalance(this.account);
+                    const balanceInEth = ethers.utils.formatEther(balance);
+                    
+                    // 测试获取网络信息
+                    const network = await this.provider.getNetwork();
+                    
+                    // 测试签名
+                    const message = "DRManager Test Message";
+                    const signature = await this.signer.signMessage(message);
+
+                    const results = `
+                        <div class="status success">
+                            <h4>🧪 功能测试结果</h4>
+                            <div class="code">
+                                账户: ${this.account}<br>
+                                余额: ${balanceInEth} ETH<br>
+                                网络: ${network.name} (Chain ID: ${network.chainId})<br>
+                                签名测试: 成功<br>
+                                签名长度: ${signature.length} 字符
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('results').innerHTML += results;
+                    
+                } catch (error) {
+                    document.getElementById('results').innerHTML += `
+                        <div class="status error">
+                            <h4>❌ 功能测试失败</h4>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        const debugger = new MetaMaskDebugger();
+        document.addEventListener('DOMContentLoaded', () => {
+            debugger.init();
+        });
+    </script>
+</body>
+</html> 

@@ -10,13 +10,17 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@web3-storage/w3up-client": "^17.3.0",
     "axios": "^1.11.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "ethers": "^5.8.0",
     "express": "^4.21.2",
+    "files-from-path": "^1.1.4",
     "form-data": "^4.0.4",
     "multer": "^2.0.2",
+    "nft.storage": "^7.2.0",
+    "sqlite3": "^5.1.7",
     "web3.storage": "^4.5.5"
   },
   "devDependencies": {

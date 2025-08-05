@@ -1,709 +1,605 @@
-// DRManager Main frontend application file
-// Fully integrated with backend API
+// DRManager Frontend Application - English Version
 
-// DRManager Main frontend application file
-// Fully integrated with backend API
+const API_BASE = 'http://localhost:3000';
+let web3;
+let contract;
+let userAccount;
+let currentUploadId = null;
 
-class DRManagerApp {
-    constructor() {
-        this.provider = null;
-        this.signer = null;
-        this.contract = null;
-        this.account = null;
-        this.contractAddress = '0xBE334a4f3e51FEbA9A1C73B92ecC8cd095C9d0aC';
-        this.selectedFile = null;
-        this.apiBase = 'http://localhost:3000'; // 根据你的后端端口调整
-    }
+// Contract ABI and Address (should be loaded from contract.json)
+const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-    // Initialize application
-    async init() {
-        console.log('🚀 Initializing DRManager...');
-        
-        this.setupEventListeners();
-        await this.checkWalletConnection();
-        await this.loadUserStats();
-        
-        console.log('✅ Application initialized successfully');
-    }
-
-    // Set up event listeners
-    setupEventListeners() {
-        // Wallet connection
-        document.getElementById('connectBtn').onclick = () => this.connectWallet();
-        
-        // File upload
-        document.getElementById('uploadZone').onclick = () => {
-            document.getElementById('fileInput').click();
-        };
-        
-        document.getElementById('fileInput').onchange = (e) => {
-            this.handleFileSelect(e.target.files);
-        };
-        
-        // Copyright registration
-        document.getElementById('registerBtn').onclick = () => this.registerCopyright();
-        
-        // 
-        this.setupDragAndDrop();
-        
-        //  MetaMask 
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', (accounts) => {
-                if (accounts.length === 0) {
-                    this.handleDisconnect();
-                } else {
-                    this.connectWallet();
-                }
-            });
-            
-            window.ethereum.on('chainChanged', () => {
-                window.location.reload();
-            });
+// Wait for MetaMask injection
+async function waitForMetaMask(timeout = 10000) {
+    const start = Date.now();
+    
+    while (!window.ethereum) {
+        if (Date.now() - start > timeout) {
+            throw new Error('MetaMask not detected. Please install MetaMask browser extension.');
         }
+        await new Promise(resolve => setTimeout(resolve, 100));
     }
+    
+    return window.ethereum;
+}
 
-    // Set up drag-and-drop upload
-    setupDragAndDrop() {
-        const zone = document.getElementById('uploadZone');
+// Connect to MetaMask wallet
+async function connectWallet() {
+    const statusDiv = document.getElementById('walletStatus');
+    const connectBtn = document.getElementById('connectWallet');
+    const addressInput = document.getElementById('walletAddress');
+    
+    try {
+        connectBtn.textContent = 'Connecting...';
+        connectBtn.disabled = true;
         
-        zone.ondragover = (e) => {
-            e.preventDefault();
-            zone.classList.add('dragover');
-        };
+        // Wait for MetaMask to be available
+        await waitForMetaMask();
         
-        zone.ondragleave = () => {
-            zone.classList.remove('dragover');
-        };
-        
-        zone.ondrop = (e) => {
-            e.preventDefault();
-            zone.classList.remove('dragover');
-            this.handleFileSelect(e.dataTransfer.files);
-        };
-    }
-
-    // Wallet connection
-    async checkWalletConnection() {
-        if (typeof window.ethereum === 'undefined') {
-            this.showNotification('Please install MetaMask wallet', 'error');
-            return;
-        }
-
-        try {
-            const accounts = await window.ethereum.request({ 
-                method: 'eth_accounts' 
-            });
-            
-            if (accounts.length > 0) {
-                await this.connectWallet();
-            }
-        } catch (error) {
-            console.error('Wallet connection failed:', error);
-        }
-    }
-
-    // 
-    async connectWallet() {
-        try {
-            const accounts = await window.ethereum.request({
-                method: 'eth_requestAccounts'
-            });
-
-            this.account = accounts[0];
-            this.provider = new ethers.providers.Web3Provider(window.ethereum);
-            this.signer = this.provider.getSigner();
-
-            // 
-            await this.loadContract();
-
-            // UI
-            this.updateWalletUI(true);
-            
-            // 
-            await this.loadUserContent();
-            await this.loadUserStats();
-
-            this.showNotification('Wallet connection！');
-            
-        } catch (error) {
-            console.error('Wallet connection failed:', error);
-            this.showNotification('Wallet connection failed', 'error');
-        }
-    }
-
-    // 
-    handleDisconnect() {
-        this.account = null;
-        this.provider = null;
-        this.signer = null;
-        this.contract = null;
-        
-        this.updateWalletUI(false);
-        this.showNotification('');
-    }
-
-    // 
-    async loadContract() {
-        try {
-            const response = await fetch('./contract.json');
-            const contractData = await response.json();
-            
-            this.contract = new ethers.Contract(
-                this.contractAddress,
-                contractData.abi,
-                this.signer
-            );
-            
-            console.log('✅ Contract loaded successfully');
-        } catch (error) {
-            console.error('❌ Contract loading failed:', error);
-            this.showNotification('Contract loading failed', 'error');
-        }
-    }
-
-    // Update wallet UI status
-    updateWalletUI(connected) {
-        const statusDot = document.getElementById('statusDot');
-        const walletStatus = document.getElementById('walletStatus');
-        const connectBtn = document.getElementById('connectBtn');
-        
-        if (connected && this.account) {
-            statusDot.classList.add('connected');
-            walletStatus.textContent = `${this.account.slice(0, 6)}...${this.account.slice(-4)}`;
-            connectBtn.innerHTML = '<i class="fas fa-check"></i> Connected';
-            connectBtn.disabled = true;
-        } else {
-            statusDot.classList.remove('connected');
-            walletStatus.textContent = 'Not Connected';
-            connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect MetaMask';
-            connectBtn.disabled = false;
-        }
-    }
-
-    // 
-    handleFileSelect(files) {
-        if (files.length === 0) return;
-        
-        const file = files[0];
-        
-        if (!this.validateFile(file)) return;
-        
-        this.selectedFile = file;
-        this.showFilePreview(file);
-        this.showFileForm();
-    }
-
-    // 
-    validateFile(file) {
-        const maxSize = 100 * 1024 * 1024; // 100MB
-        const allowedTypes = ['image/', 'application/', 'text/', 'audio/', 'video/'];
-        
-        if (file.size > maxSize) {
-            this.showNotification('File too large, max 100MB', 'error');
-            return false;
-        }
-        
-        if (!allowedTypes.some(type => file.type.startsWith(type))) {
-            this.showNotification('Unsupported file type', 'error');
-            return false;
-        }
-        
-        return true;
-    }
-
-    // 
-    showFilePreview(file) {
-        const preview = document.getElementById('filePreview');
-        if (!preview) return; // 如果元素不存在就跳过
-        
-        const icon = this.getFileIcon(file.type);
-        
-        const fileIcon = document.getElementById('fileIcon');
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
-        
-        if (fileIcon) fileIcon.className = `fas ${icon} file-icon`;
-        if (fileName) fileName.textContent = file.name;
-        if (fileSize) fileSize.textContent = this.formatFileSize(file.size);
-        
-        preview.style.display = 'block';
-    }
-
-    // 
-    showFileForm() {
-        const fileForm = document.getElementById('fileForm');
-        if (fileForm) {
-            fileForm.style.display = 'block';
-            const titleInput = document.getElementById('titleInput');
-            if (titleInput) {
-                titleInput.value = this.selectedFile.name.split('.')[0];
-            }
-        }
-    }
-
-    async registerCopyright() {
-        if (!this.account) {
-            this.showNotification('Please connect wallet first', 'error');
-            return;
-        }
-
-        if (!this.selectedFile) {
-            this.showNotification('Please select a file first', 'error');
-            return;
-        }
-
-        if (!this.contract) {
-            this.showNotification('Contract not loaded', 'error');
-            return;
-        }
-
-        const btn = document.getElementById('registerBtn');
-        const originalHTML = btn.innerHTML;
-        
-        try {
-            btn.disabled = true;
-            btn.innerHTML = '<div class="loading-spinner"></div> Registering...';
-            
-            const title = document.getElementById('titleInput')?.value?.trim() || this.selectedFile.name;
-            const description = document.getElementById('descInput')?.value?.trim() || '';
-            const category = document.getElementById('categorySelect')?.value || 'other';
-            const price = document.getElementById('priceInput')?.value || '0';
-            
-            if (!title) {
-                throw new Error('Please enter a file title');
-            }
-
-            this.showProgress('Uploading to IPFS...', 20);
-            const ipfsHash = await this.uploadFileToIPFS(this.selectedFile);
-            
-
-            this.showProgress('Generating file hash...', 40);
-            const fileHash = await this.calculateFileHash(this.selectedFile);
-            
-            this.showProgress('Registering on blockchain...', 60);
-            const tx = await this.contract.registerWork(fileHash, title, ipfsHash);
-            
-            this.showProgress('Waiting for transaction confirmation...', 80);
-            const receipt = await tx.wait();
-
-            this.showProgress('Saving registration info...', 90);
-            await this.saveContentToBackend({
-                userAddress: this.account,
-                title,
-                description,
-                category,
-                price,
-                ipfsHash,
-                fileHash,
-                txHash: receipt.transactionHash,
-                blockNumber: receipt.blockNumber
-            });
-            
-            this.showProgress('Registration complete!', 100);
-
-            this.showNotification('Copyright registration successful!');
-            
-            // Reset form
-            this.resetForm();
-            await this.loadUserContent();
-            await this.loadUserStats();
-            
-        } catch (error) {
-            console.error('❌ Copyright registration failed:', error);
-            this.showNotification(`Registration failed: ${error.message}`, 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalHTML;
-            this.hideProgress();
-        }
-    }
-
-    // 新增: 计算文件哈希函数
-    async calculateFileHash(file) {
-        const arrayBuffer = await file.arrayBuffer();
-        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    //  IPFS ( API)
-    async uploadFileToIPFS(file) {
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            const response = await fetch(`${this.apiBase}/api/upload`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'IPFS upload failed');
-            }
-            
-            const result = await response.json();
-            console.log('✅ IPFS upload successful:', result.ipfsHash);
-            
-            return result.ipfsHash;
-            
-        } catch (error) {
-            console.error('❌ IPFS upload failed:', error);
-            throw error;
-        }
-    }
-
-    // 
-    async saveContentToBackend(contentData) {
-        try {
-            const response = await fetch(`${this.apiBase}/api/content/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(contentData)
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Backend save failed');
-            }
-            
-            const result = await response.json();
-            console.log('✅ Content saved to backend');
-            
-            return result;
-            
-        } catch (error) {
-            console.error('❌ Backend save failed:', error);
-            throw error;
-        }
-    }
-
-    // 
-    async recordTransaction(transactionData) {
-        try {
-            const response = await fetch(`${this.apiBase}/api/transaction/record`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(transactionData)
-            });
-            
-            if (!response.ok) {
-                console.error('Transaction recording failed');
-                return;
-            }
-            
-            console.log('✅ Transaction recorded');
-            
-        } catch (error) {
-            console.error('❌ Transaction recording failed:', error);
-            // 不抛出错误，因为这不是关键功能
-        }
-    }
-
-    // 
-    async loadUserContent() {
-        if (!this.account) return;
-        
-        try {
-            const response = await fetch(`${this.apiBase}/api/content/user/${this.account}`);
-            
-            if (!response.ok) {
-                throw new Error('Failed to load user content');
-            }
-            
-            const result = await response.json();
-            this.displayUserContent(result.contents || []);
-            
-        } catch (error) {
-            console.error('❌ Failed to load user content:', error);
-        }
-    }
-
-    // 
-    displayUserContent(contents) {
-        const container = document.getElementById('myContent');
-        if (!container) return;
-        
-        if (contents.length === 0) {
-            container.innerHTML = `
-                <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">
-                    <i class="fas fa-inbox" style="font-size: 3em; margin-bottom: 20px; display: block;"></i>
-                    <p>No content registered yet</p>
-                    <p style="font-size: 0.9em; margin-top: 10px;">Upload your first file to start protecting your copyright!</p>
-                </div>
-            `;
-            return;
-        }
-        
-        container.innerHTML = contents.map(content => `
-            <div class="content-item">
-                <div class="content-title">
-                    <i class="fas ${this.getFileIcon('')}"></i>
-                    ${content.title}
-                </div>
-                <div style="color: #6b7280; font-size: 0.9em; margin: 10px 0;">
-                    ${content.description || 'No description'}
-                </div>
-                <div class="content-hash">
-                    IPFS: ${content.ipfsHash.slice(0, 10)}...${content.ipfsHash.slice(-8)}
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
-                    <span style="font-weight: 600; color: #667eea;">
-                        ${content.price || '0'} ETH
-                    </span>
-                    <div class="content-actions">
-                        <button class="btn" onclick="app.viewOnIPFS('${content.ipfsHash}')" style="padding: 8px 12px; font-size: 0.9em;">
-                            <i class="fas fa-external-link-alt"></i> View
-                        </button>
-                        <button class="btn" onclick="app.copyHash('${content.ipfsHash}')" style="padding: 8px 12px; font-size: 0.9em;">
-                            <i class="fas fa-copy"></i> Copy
-                        </button>
-                    </div>
-                </div>
-                <div style="font-size: 0.8em; color: #9ca3af; margin-top: 10px;">
-                    Registered: ${new Date(content.timestamp).toLocaleString()}
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // Load user statistics
-    async loadUserStats() {
-        if (!this.account) {
-            this.updateStats({
-                totalFiles: '0',
-                totalEarnings: '0',
-                activeLicenses: '0',
-                gasPrice: '- Gwei'
-            });
-            return;
-        }
-        
-        try {
-            const response = await fetch(`${this.apiBase}/api/stats/${this.account}`);
-            
-            if (response.ok) {
-                const result = await response.json();
-                this.updateStats(result.stats);
-            }
-            
-            //  Gas 
-            if (this.provider) {
-                const gasPrice = await this.provider.getGasPrice();
-                const gasPriceGwei = ethers.utils.formatUnits(gasPrice, 'gwei');
-                const gasPriceEl = document.getElementById('gasPrice');
-                if (gasPriceEl) {
-                    gasPriceEl.textContent = `${parseFloat(gasPriceGwei).toFixed(1)} Gwei`;
-                }
-            }
-            
-        } catch (error) {
-            console.error('❌ Failed to load stats:', error);
-        }
-    }
-
-    // 
-    updateStats(stats) {
-        const elements = {
-            totalFiles: document.getElementById('totalFiles'),
-            totalEarnings: document.getElementById('totalEarnings'),
-            activeLicenses: document.getElementById('activeLicenses')
-        };
-        
-        if (elements.totalFiles) elements.totalFiles.textContent = stats.totalFiles || '0';
-        if (elements.totalEarnings) elements.totalEarnings.textContent = `${stats.totalEarnings || '0'} ETH`;
-        if (elements.activeLicenses) elements.activeLicenses.textContent = stats.activeLicenses || '0';
-    }
-
-    showProgress(message, percent) {
-        const container = document.getElementById('progressContainer');
-        const fill = document.getElementById('progressFill');
-        const label = document.getElementById('progressLabel');
-        const percentEl = document.getElementById('progressPercent');
-        
-        if (container) container.style.display = 'block';
-        if (fill) fill.style.width = `${percent}%`;
-        if (label) label.textContent = message;
-        if (percentEl) percentEl.textContent = `${percent}%`;
-    }
-
-    // 
-    hideProgress() {
-        const container = document.getElementById('progressContainer');
-        if (container) container.style.display = 'none';
-    }
-
-    // Reset form
-    resetForm() {
-        const elements = {
-            fileInput: document.getElementById('fileInput'),
-            fileForm: document.getElementById('fileForm'),
-            filePreview: document.getElementById('filePreview'),
-            titleInput: document.getElementById('titleInput'),
-            descInput: document.getElementById('descInput'),
-            priceInput: document.getElementById('priceInput')
-        };
-        
-        if (elements.fileInput) elements.fileInput.value = '';
-        if (elements.fileForm) elements.fileForm.style.display = 'none';
-        if (elements.filePreview) elements.filePreview.style.display = 'none';
-        if (elements.titleInput) elements.titleInput.value = '';
-        if (elements.descInput) elements.descInput.value = '';
-        if (elements.priceInput) elements.priceInput.value = '';
-        
-        this.selectedFile = null;
-    }
-
-    //  IPFS 
-    viewOnIPFS(hash) {
-        const gatewayUrl = `https://ipfs.io/ipfs/${hash}`;
-        window.open(gatewayUrl, '_blank');
-    }
-
-    //  IPFS 
-    copyHash(hash) {
-        navigator.clipboard.writeText(hash).then(() => {
-            this.showNotification('IPFS hash copied to clipboard');
+        // Request account access
+        const accounts = await window.ethereum.request({
+            method: 'eth_requestAccounts'
         });
-    }
-
-    // Get file icon
-    getFileIcon(type) {
-        if (type.startsWith('image/')) return 'fa-image';
-        if (type.startsWith('video/')) return 'fa-video';
-        if (type.startsWith('audio/')) return 'fa-music';
-        if (type.includes('pdf')) return 'fa-file-pdf';
-        if (type.includes('document') || type.includes('word')) return 'fa-file-word';
-        return 'fa-file';
-    }
-
-    // 
-    formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
- 
-    showNotification(message, type = 'success') {
-        const notification = document.getElementById('notification');
-        const text = document.getElementById('notificationText');
-        const icon = document.getElementById('notificationIcon');
         
-        if (!notification || !text || !icon) {
-            console.log(`${type.toUpperCase()}: ${message}`);
-            if (type === 'error') {
-                alert(`Error: ${message}`);
-            }
-            return;
+        if (accounts.length === 0) {
+            throw new Error('No accounts found. Please unlock MetaMask.');
         }
         
-        // 
-        if (type === 'error') {
-            icon.className = 'fas fa-exclamation-circle';
-            notification.classList.add('error');
-        } else {
-            icon.className = 'fas fa-check-circle';
-            notification.classList.remove('error');
+        userAccount = accounts[0];
+        addressInput.value = userAccount;
+        
+        // Initialize web3 and contract
+        web3 = new Web3(window.ethereum);
+        
+        showStatus(statusDiv, 'success', `✅ Wallet connected: ${userAccount.substring(0,10)}...`);
+        connectBtn.textContent = 'Connected';
+        connectBtn.style.background = 'linear-gradient(135deg, #059669, #047857)';
+        
+        // Enable other functions
+        enableUploadSection();
+        loadUserStats();
+        loadUserWorksForLicense();
+        
+    } catch (error) {
+        console.error('Wallet connection error:', error);
+        let errorMessage = 'Failed to connect to MetaMask';
+        
+        if (error.message.includes('MetaMask not detected')) {
+            errorMessage = 'MetaMask not detected. Please install MetaMask browser extension and refresh the page.';
+        } else if (error.message.includes('No accounts')) {
+            errorMessage = 'No accounts found. Please unlock MetaMask and create an account.';
+        } else if (error.code === 4001) {
+            errorMessage = 'Connection rejected. Please approve the connection in MetaMask.';
         }
         
-        text.textContent = message;
-        notification.classList.add('show');
-        
-        // 3
-        setTimeout(() => {
-            notification.classList.remove('show');
-        }, 3000);
+        showStatus(statusDiv, 'error', `❌ ${errorMessage}`);
+        connectBtn.textContent = 'Connect MetaMask';
+        connectBtn.disabled = false;
     }
 }
 
-// 
-const app = new DRManagerApp();
+// Check wallet connection status
+async function checkWalletConnection() {
+    try {
+        await waitForMetaMask();
+        
+        const accounts = await window.ethereum.request({
+            method: 'eth_accounts'
+        });
+        
+        if (accounts.length > 0) {
+            userAccount = accounts[0];
+            document.getElementById('walletAddress').value = userAccount;
+            document.getElementById('connectWallet').textContent = 'Connected';
+            document.getElementById('connectWallet').style.background = 'linear-gradient(135deg, #059669, #047857)';
+            enableUploadSection();
+            loadUserStats();
+            loadUserWorksForLicense();
+        }
+    } catch (error) {
+        console.error('Check wallet connection error:', error);
+    }
+}
 
-// 
-document.addEventListener('DOMContentLoaded', () => {
-    app.init();
+// Enable upload section
+function enableUploadSection() {
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    fileInput.disabled = false;
+    
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = `Upload: ${e.target.files[0].name}`;
+        }
+    });
+}
+
+// File upload to IPFS
+async function uploadFile() {
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const statusDiv = document.getElementById('uploadStatus');
+    const progressDiv = document.getElementById('uploadProgress');
+    
+    if (!fileInput.files[0]) {
+        showStatus(statusDiv, 'error', '❌ Please select a file first');
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    
+    // File size check (100MB limit)
+    if (file.size > 100 * 1024 * 1024) {
+        showStatus(statusDiv, 'error', '❌ File size exceeds 100MB limit');
+        return;
+    }
+    
+    try {
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Uploading...';
+        showProgress(progressDiv);
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE}/api/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            currentUploadId = result.id;
+            hideProgress(progressDiv);
+            showStatus(statusDiv, 'success', `✅ File uploaded successfully! IPFS Hash: ${result.ipfsHash.substring(0,20)}...`);
+            
+            // Enable registration
+            document.getElementById('registerBtn').disabled = false;
+            
+            // Auto-fill title if empty
+            const titleInput = document.getElementById('contentTitle');
+            if (!titleInput.value) {
+                titleInput.value = file.name.split('.')[0]; // Remove extension
+            }
+            
+        } else {
+            throw new Error(result.error || 'Upload failed');
+        }
+        
+    } catch (error) {
+        console.error('Upload error:', error);
+        hideProgress(progressDiv);
+        showStatus(statusDiv, 'error', `❌ Upload failed: ${error.message}`);
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload to IPFS';
+    }
+}
+
+// Register content copyright
+async function registerCopyright() {
+    const titleInput = document.getElementById('contentTitle');
+    const descriptionInput = document.getElementById('contentDescription');
+    const categoryInput = document.getElementById('contentCategory');
+    const registerBtn = document.getElementById('registerBtn');
+    const statusDiv = document.getElementById('registerStatus');
+    const progressDiv = document.getElementById('registerProgress');
+    
+    if (!currentUploadId) {
+        showStatus(statusDiv, 'error', '❌ Please upload a file first');
+        return;
+    }
+    
+    if (!titleInput.value.trim()) {
+        showStatus(statusDiv, 'error', '❌ Please enter a title');
+        return;
+    }
+    
+    if (!userAccount) {
+        showStatus(statusDiv, 'error', '❌ Please connect wallet first');
+        return;
+    }
+    
+    try {
+        registerBtn.disabled = true;
+        registerBtn.textContent = 'Registering...';
+        showProgress(progressDiv);
+        
+        // Skip blockchain interaction for now (offline mode)
+        // Generate offline transaction details
+        const offlineTxHash = `offline_${Date.now()}`;
+        const blockNumber = 0;
+        
+        // Register with backend
+        const response = await fetch(`${API_BASE}/api/content/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userAddress: userAccount,
+                title: titleInput.value.trim(),
+                description: descriptionInput.value.trim(),
+                category: categoryInput.value,
+                price: '0',
+                uploadId: currentUploadId,
+                txHash: offlineTxHash,
+                blockNumber: blockNumber
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            hideProgress(progressDiv);
+            showStatus(statusDiv, 'success', `✅ Content registered successfully! ID: ${result.id}`);
+            
+            // Reset form
+            titleInput.value = '';
+            descriptionInput.value = '';
+            categoryInput.selectedIndex = 0;
+            currentUploadId = null;
+            
+            // Refresh stats and user works
+            loadUserStats();
+            loadUserWorksForLicense();
+            
+        } else {
+            throw new Error(result.error || 'Registration failed');
+        }
+        
+    } catch (error) {
+        console.error('Registration error:', error);
+        hideProgress(progressDiv);
+        showStatus(statusDiv, 'error', `❌ Registration failed: ${error.message}`);
+    } finally {
+        registerBtn.disabled = false;
+        registerBtn.textContent = 'Register Copyright';
+    }
+}
+
+// Load user works for license creation
+async function loadUserWorksForLicense() {
+    if (!userAccount) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/content/user/${userAccount}`);
+        const result = await response.json();
+        
+        const select = document.getElementById('myWorksSelect');
+        select.innerHTML = '<option value="">Choose registered content...</option>';
+        
+        if (result.success && result.contents.length > 0) {
+            result.contents.forEach(content => {
+                const option = document.createElement('option');
+                option.value = content.id;
+                option.textContent = `${content.title} (${content.category})`;
+                select.appendChild(option);
+            });
+            
+            document.getElementById('createLicenseBtn').disabled = false;
+        }
+        
+    } catch (error) {
+        console.error('Failed to load user works:', error);
+    }
+}
+
+// Create license
+async function createLicense() {
+    const contentSelect = document.getElementById('myWorksSelect');
+    const priceInput = document.getElementById('licensePrice');
+    const scopeInput = document.getElementById('usageScope');
+    const regionInput = document.getElementById('region');
+    const durationInput = document.getElementById('duration');
+    const statusDiv = document.getElementById('createLicenseStatus');
+    const progressDiv = document.getElementById('createLicenseProgress');
+    
+    if (!contentSelect.value) {
+        showStatus(statusDiv, 'error', '❌ Please select content to license');
+        return;
+    }
+    
+    if (!priceInput.value || parseFloat(priceInput.value) <= 0) {
+        showStatus(statusDiv, 'error', '❌ Please enter a valid price');
+        return;
+    }
+    
+    if (!scopeInput.value.trim()) {
+        showStatus(statusDiv, 'error', '❌ Please enter usage scope');
+        return;
+    }
+    
+    if (!regionInput.value.trim()) {
+        showStatus(statusDiv, 'error', '❌ Please enter region');
+        return;
+    }
+    
+    try {
+        showProgress(progressDiv);
+        showLicenseProgress();
+        
+        const response = await fetch(`${API_BASE}/api/license/create`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contentId: contentSelect.value,
+                userAddress: userAccount,
+                price: priceInput.value,
+                usageScope: scopeInput.value.trim(),
+                region: regionInput.value.trim() || 'Global',
+                duration: parseInt(durationInput.value) || 365
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            hideProgress(progressDiv);
+            hideLicenseProgress();
+            showStatus(statusDiv, 'success', `✅ License created successfully! ID: ${result.id}`);
+            resetLicenseForm();
+            loadUserStats();
+        } else {
+            throw new Error(result.error || 'Failed to create license');
+        }
+        
+    } catch (error) {
+        console.error('Create license error:', error);
+        hideProgress(progressDiv);
+        hideLicenseProgress();
+        showStatus(statusDiv, 'error', `❌ Failed to create license: ${error.message}`);
+    }
+}
+
+// Search license (placeholder)
+async function searchLicense() {
+    const statusDiv = document.getElementById('buyLicenseStatus');
+    showStatus(statusDiv, 'info', '🚧 Search functionality is under development');
+}
+
+// Load marketplace licenses
+async function loadMarketplaceLicenses() {
+    const statusDiv = document.getElementById('buyLicenseStatus');
+    const progressDiv = document.getElementById('buyLicenseProgress');
+    const resultsDiv = document.getElementById('licenseResults');
+    
+    try {
+        showProgress(progressDiv);
+        
+        const response = await fetch(`${API_BASE}/api/license/marketplace`);
+        const result = await response.json();
+        
+        hideProgress(progressDiv);
+        
+        if (result.success) {
+            if (result.licenses.length === 0) {
+                showStatus(statusDiv, 'info', 'ℹ️ No licenses available in marketplace yet');
+                resultsDiv.innerHTML = '<p style="text-align: center; color: #6b7280;">No licenses found. Create the first one!</p>';
+            } else {
+                showStatus(statusDiv, 'success', `✅ Found ${result.licenses.length} licenses`);
+                displayMarketplaceLicenses(result.licenses);
+            }
+        } else {
+            throw new Error(result.error || 'Failed to load marketplace');
+        }
+        
+    } catch (error) {
+        console.error('Load marketplace error:', error);
+        hideProgress(progressDiv);
+        showStatus(statusDiv, 'error', `❌ Failed to load marketplace: ${error.message}`);
+    }
+}
+
+// Display marketplace licenses
+function displayMarketplaceLicenses(licenses) {
+    const resultsDiv = document.getElementById('licenseResults');
+    
+    resultsDiv.innerHTML = licenses.map(license => `
+        <div class="license-card">
+            <div class="license-title">${license.title}</div>
+            <div class="license-info">
+                <strong>Price:</strong> ${license.price} ETH<br>
+                <strong>Scope:</strong> ${license.usageScope}<br>
+                <strong>Region:</strong> ${license.region}<br>
+                <strong>Valid until:</strong> ${new Date(license.expiryDate).toLocaleDateString()}<br>
+                <strong>Publisher:</strong> ${license.userAddress.substring(0,10)}...
+            </div>
+            <div class="license-actions">
+                <button class="btn btn-secondary btn-small" onclick="window.open('https://ipfs.io/ipfs/${license.ipfsHash}', '_blank')">Preview Content</button>
+                <button class="btn btn-success btn-small" onclick="purchaseLicense('${license.id}', '${license.price}')">Buy License</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Purchase license
+async function purchaseLicense(licenseId, price) {
+    const statusDiv = document.getElementById('buyLicenseStatus');
+    
+    if (!userAccount) {
+        showStatus(statusDiv, 'error', '❌ Please connect wallet first');
+        return;
+    }
+    
+    if (!confirm(`Confirm purchase of license for ${price} ETH?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/license/purchase`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                licenseId: licenseId,
+                buyerAddress: userAccount
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showStatus(statusDiv, 'success', `✅ License purchased successfully! Transaction ID: ${result.transactionId}`);
+            loadUserStats();
+            loadMarketplaceLicenses(); // Refresh marketplace
+        } else {
+            throw new Error(result.error || 'Purchase failed');
+        }
+        
+    } catch (error) {
+        console.error('Purchase license error:', error);
+        showStatus(statusDiv, 'error', `❌ Purchase failed: ${error.message}`);
+    }
+}
+
+// Load user statistics
+async function loadUserStats() {
+    if (!userAccount) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/stats/${userAccount}`);
+        const result = await response.json();
+        
+        if (result.success && result.stats) {
+            const stats = result.stats;
+            const statsDiv = document.getElementById('userStats');
+            
+            statsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${stats.totalUploads || 0}</div>
+                    <div class="stat-label">Files Uploaded</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.registeredContents || 0}</div>
+                    <div class="stat-label">Content Registered</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.activeLicenses || 0}</div>
+                    <div class="stat-label">Active Licenses</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.totalEarnings || '0.000'}</div>
+                    <div class="stat-label">Total Earnings (ETH)</div>
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Failed to load user stats:', error);
+    }
+}
+
+// Helper functions
+function showStatus(element, type, message) {
+    element.className = `status ${type}`;
+    element.textContent = message;
+    element.style.display = 'block';
+    
+    if (type === 'success' || type === 'info') {
+        setTimeout(() => {
+            element.style.display = 'none';
+        }, 5000);
+    }
+}
+
+function showProgress(element) {
+    element.style.display = 'block';
+}
+
+function hideProgress(element) {
+    element.style.display = 'none';
+}
+
+function showLicenseProgress() {
+    const progressDiv = document.getElementById('createLicenseProgress');
+    showProgress(progressDiv);
+}
+
+function hideLicenseProgress() {
+    const progressDiv = document.getElementById('createLicenseProgress');
+    hideProgress(progressDiv);
+}
+
+function resetLicenseForm() {
+    document.getElementById('myWorksSelect').selectedIndex = 0;
+    document.getElementById('licensePrice').value = '';
+    document.getElementById('usageScope').value = '';
+    document.getElementById('region').value = '';
+    document.getElementById('duration').value = '';
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Check wallet connection on page load
+    checkWalletConnection();
+    
+    // Wallet connection
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    
+    // File upload
+    document.getElementById('uploadBtn').addEventListener('click', uploadFile);
+    
+    // Content registration
+    document.getElementById('registerBtn').addEventListener('click', registerCopyright);
+    
+    // License management
+    document.getElementById('createLicenseBtn').addEventListener('click', createLicense);
+    document.getElementById('searchLicenseBtn').addEventListener('click', searchLicense);
+    document.getElementById('loadMarketplaceBtn').addEventListener('click', loadMarketplaceLicenses);
+    
+    // User statistics
+    document.getElementById('loadStatsBtn').addEventListener('click', loadUserStats);
+    
+    // File drag and drop
+    const fileDropArea = document.querySelector('.file-drop');
+    const fileInput = document.getElementById('fileInput');
+    
+    fileDropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileDropArea.classList.add('dragover');
+    });
+    
+    fileDropArea.addEventListener('dragleave', () => {
+        fileDropArea.classList.remove('dragover');
+    });
+    
+    fileDropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileDropArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            document.getElementById('uploadBtn').disabled = false;
+            document.getElementById('uploadBtn').textContent = `Upload: ${files[0].name}`;
+        }
+    });
 });
 
-
-// let contract;
-// let signer;
-
-// async function loadContract() {
-//     if (typeof window.ethereum === 'undefined') {
-//         alert("MetaMask not detected. Please install MetaMask.");
-//         return;
-//     }
-
-//     try {
-//         console.log("Requesting MetaMask connection...");
-//         const provider = new ethers.providers.Web3Provider(window.ethereum);
-//         await provider.send("eth_requestAccounts", []);
-//         signer = provider.getSigner();
-
-//         console.log("Connected account:", await signer.getAddress());
-
-//         const response = await fetch('contract.json');
-//         const contractData = await response.json();
-//         console.log("Contract JSON loaded:", contractData);
-
-//         const contractAddress = "0xBE334a4f3e51FEbA9A1C73B92ecC8cd095C9d0aC"; 
-//         const contractABI = contractData.abi;
-//         contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-//         console.log("Contract initialized:", contract);
-//     } catch (err) {
-//         console.error("MetaMask connection failed:", err);
-//         alert("MetaMask connection failed: " + err.message);
-//     }
-// }
-
-
-// async function fileToHash(file) {
-//     const buffer = await file.arrayBuffer();
-//     const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-//     return '0x' + Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-// }
-
-// async function registerWork() {
-//     const file = document.getElementById("fileInput").files[0];
-//     const title = document.getElementById("titleInput").value;
-//     if (!file || !title) return alert("Missing inputs");
-//     const hash = await fileToHash(file);
-//     await loadContract();
-//     const tx = await contract.registerWork(hash, title, "placeholderCID");
-//     await tx.wait();
-//     document.getElementById("status").innerText = "Registered: " + hash;
-// }
-
-// async function createLicense() {
-//     const file = document.getElementById("fileInput2").files[0];
-//     const price = document.getElementById("priceInput").value;
-//     const hash = await fileToHash(file);
-//     const priceWei = ethers.utils.parseEther(price);
-//     await loadContract();
-//     const tx = await contract.createLicense(hash, priceWei, "General Use", "Global", 365 * 24 * 60 * 60);
-//     await tx.wait();
-//     document.getElementById("status").innerText = "License created: " + hash;
-// }
-
-// async function purchaseLicense() {
-//     const file = document.getElementById("fileInput3").files[0];
-//     const hash = await fileToHash(file);
-//     await loadContract();
-//     const lic = await contract.getLicense(hash);
-//     const tx = await contract.purchaseLicense(hash, { value: lic.price });
-//     await tx.wait();
-//     document.getElementById("status").innerText = "License purchased: " + hash;
-// }
-
-// window.addEventListener("load", async () => {
-//     await loadContract();
-// });
+// Handle wallet account changes
+if (window.ethereum) {
+    window.ethereum.on('accountsChanged', function(accounts) {
+        if (accounts.length === 0) {
+            // User logged out
+            userAccount = null;
+            document.getElementById('walletAddress').value = '';
+            document.getElementById('connectWallet').textContent = 'Connect MetaMask';
+            document.getElementById('connectWallet').style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed)';
+            document.getElementById('connectWallet').disabled = false;
+        } else {
+            // User switched accounts
+            userAccount = accounts[0];
+            document.getElementById('walletAddress').value = userAccount;
+            loadUserStats();
+            loadUserWorksForLicense();
+        }
+    });
+}
 
