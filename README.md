@@ -211,11 +211,7 @@ npm start    # Production mode
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Contact
 
-- Project Homepage: [GitHub Repository]
-- Issue Reporting: [Issues]
-- Email: [your-email@example.com]
 
 ## Acknowledgments
 
