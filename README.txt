@@ -76,10 +76,9 @@ Smart Contract Deployment:
 3. Update contract addresses in frontend configuration
 
 CONTRACT ADDRESSES
-- DRManager: 0x1fE38AFc5B06e147dCb0e2eF46FC7ee27bfd278f
-- ContentVerification: 0xBE334a4f3e51FEbA9A1C73B92ecC8cd095C9d0aC
-- Deployment : 0x40c11e0c63ce00b49b12f77b27a90b1d502b0bafa1c5de2b33f628d5523df254
-- ContentVerification : 0x5FbDB2315678afecb367f032d93F642f64180aa3
+
+- ContentVerification1: 0xBE334a4f3e51FEbA9A1C73B92ecC8cd095C9d0aC
+- ContentVerification2: 0x5FbDB2315678afecb367f032d93F642f64180aa3
 
 
 SECURITY CONSIDERATIONS
